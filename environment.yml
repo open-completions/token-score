@@ -1,0 +1,12 @@
+name: token-score
+dependencies:
+  - python=3.12
+  - tokenizers=0.15.0
+  - sentencepiece=0.1.99
+  - tiktoken=0.5.2
+  - datasets=2.16.1
+  - transformers=4.36.2
+  - pytorch=2.0.0
+  - tqdm=4.66.1
+channels:
+  - conda-forge
