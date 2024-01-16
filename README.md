@@ -2,6 +2,10 @@
 
 A Framework for Evaluating Tokenization of Source Code
 
+## Supported Languages
+
+Token Score supports evaluating tokenizers over five popular languages: Python, C++, Java, JavaScript, and Go.
+
 ## Models Surveyed
 
 | Name                                                                     | Vocabulary Size |
