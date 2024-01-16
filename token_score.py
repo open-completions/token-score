@@ -3,6 +3,7 @@ from typing import Any, Dict, List, Set, Tuple
 from pydantic import BaseModel
 from tree_sitter import Node as TSNode
 from tree_sitter import Parser as TSParser
+from tree_sitter import Tree as TSTree
 from tree_sitter_languages import get_language as ts_get_language
 
 # The set of languages supported by TokenScore.
@@ -72,26 +73,9 @@ class Document(BaseModel):
     # The content of the document.
     content: bytes
 
-
-class DocumentToken(BaseModel):
-    """A structure that holds a token and its byte range over the document's
-    content."""
-
-    # The token's byte range over the document's content.
-    range: Tuple[int, int]
-
-    def to_bytes(self, content: bytes) -> bytes:
-        """Returns the bytes content of the token using the document's content."""
-        return content[self.range[0] : self.range[1]]
-
-
-class DocumentTokenizerResult(BaseModel):
-    """The result of tokenizing a document using a tokenizer. Contains a list
-    of bytes ranges over the document's content that correspond to each
-    token."""
-
-    # The list of tokens and their byte ranges over the document's content.
-    tokens: List[DocumentToken]
+    def parse(self) -> TSTree:
+        """Returns the AST of the document."""
+        return PARSERS[self.lang].parse(self.content)
 
 
 class DocumentSemanticToken(BaseModel):
@@ -129,11 +113,9 @@ def compute_token_score(documents: Dict[str, Document]) -> TokenScore:
     )
 
 
-def compute_document_parser_result(
-    content: bytes, parser: TSParser
-) -> DocumentParserResult:
-    """Computes the parser result of a document using a parser."""
-    tree = parser.parse(content)
+def collect_semantic_tokens(
+    tree: TSTree, content: bytes
+) -> List[DocumentSemanticToken]:
     semantic_tokens = []
 
     prev_start_byte = 0
@@ -172,7 +154,7 @@ def compute_document_parser_result(
             )
         )
 
-    return DocumentParserResult(semantic_tokens=semantic_tokens)
+    return semantic_tokens
 
 
 def build_parsers(languages: Set[str]) -> Dict[str, TSParser]:
