@@ -1,6 +1,7 @@
 from typing import Any, Dict, List, Set, Tuple
 
 from pydantic import BaseModel
+from tree_sitter import Language as TSLanguage
 from tree_sitter import Node as TSNode
 from tree_sitter import Parser as TSParser
 from tree_sitter import Tree as TSTree
@@ -75,7 +76,7 @@ class Document(BaseModel):
 
     def parse(self) -> TSTree:
         """Returns the AST of the document."""
-        return PARSERS[self.lang].parse(self.content)
+        return TS_PARSERS[self.lang].parse(self.content)
 
 
 class DocumentSemanticToken(BaseModel):
@@ -113,9 +114,33 @@ def compute_token_score(documents: Dict[str, Document]) -> TokenScore:
     )
 
 
+def collect_identifiers(
+    tree: TSTree, document: Document
+) -> List[DocumentSemanticToken]:
+    """Collects the identifiers of the AST and their byte ranges over the
+    document's content."""
+
+    TS_LANGUAGES[document.lang].node_kind_for_id
+
+    query = TS_LANGUAGES[document.lang].query(__TS_QUERIES[document.lang])
+
+    matches = query.captures(tree.root_node)
+
+    identifiers = [
+        DocumentSemanticToken(
+            range=(match[0].start_byte, match[0].end_byte), type=match[0].type
+        )
+        for match in matches
+    ]
+
+    return identifiers
+
+
 def collect_semantic_tokens(
     tree: TSTree, content: bytes
 ) -> List[DocumentSemanticToken]:
+    """Collects the leaf nodes of the AST and their byte ranges over the
+    document's content."""
     semantic_tokens = []
 
     prev_start_byte = 0
@@ -157,21 +182,36 @@ def collect_semantic_tokens(
     return semantic_tokens
 
 
-def build_parsers(languages: Set[str]) -> Dict[str, TSParser]:
+def compute_jaccard_similarity_score(set1: Set[str], set2: Set[str]) -> float:
+    """Calculate the Jaccard Similarity between two sets of splits."""
+    intersection = len(set1.intersection(set2))
+    union = len(set1.union(set2))
+    return intersection / union
+
+
+def __build_languages() -> Dict[str, TSLanguage]:
+    """Builds a mapping from language name to tree-sitter language."""
+    languages = {}
+    for lang in LANGUAGES:
+        languages[lang] = ts_get_language(__TREE_SITTER_LANGUAGE_SLUGS[lang])
+    return languages
+
+
+def __build_parsers() -> Dict[str, TSParser]:
     """Builds a TreeSitter parser for each language in the given list."""
 
     parsers = {}
-    for lang in languages:
+    for lang in LANGUAGES:
         try:
             parsers[lang] = TSParser()
-            parsers[lang].set_language(ts_get_language(__TREE_SITTER_LANGUAGES[lang]))
+            parsers[lang].set_language(TS_LANGUAGES[lang])
         except Exception as e:
             print(f"Error building parser for {lang}: {e}")
 
     return parsers
 
 
-__TREE_SITTER_LANGUAGES = {
+__TREE_SITTER_LANGUAGE_SLUGS = {
     "c++": "cpp",
     "go": "go",
     "java": "java",
@@ -179,4 +219,32 @@ __TREE_SITTER_LANGUAGES = {
     "python": "python",
 }
 
-PARSERS = build_parsers(LANGUAGES)
+TS_LANGUAGES = __build_languages()
+
+TS_PARSERS = __build_parsers()
+
+__TS_QUERIES = {
+    "python": """
+        (identifier) @id
+    """,
+    "go": """
+        (identifier) @id
+        (package_identifier) @pkg_id
+        (type_identifier) @type_id
+        (field_identifier) @field_id
+        """,
+    "java": """
+        (identifier) @id
+        (type_identifier) @type_id
+        """,
+    "javascript": """
+        (identifier) @id
+        (property_identifier) @property_id
+    """,
+    "c++": """
+        (identifier) @id
+        (type_identifier) @type_id
+        (namespace_identifier) @namespace_id
+        (field_identifier) @field_id
+    """,
+}

@@ -1,7 +1,11 @@
+from spiral import ronin
+
 from token_score import (
     Document,
     DocumentSemanticToken,
+    collect_identifiers,
     collect_semantic_tokens,
+    compute_jaccard_similarity_score,
 )
 
 
@@ -202,3 +206,181 @@ def test_collect_semantic_tokens_cpp():
         DocumentSemanticToken(range=(75, 76), type="}"),
         DocumentSemanticToken(range=(76, 77), type="whitespace"),
     ]
+
+
+def test_collect_identifiers_go():
+    document = Document(
+        lang="go",
+        content=b'package hello_world\n\n// Hello World\nfunc main() {\na := "Hello World"}\ntype Hello struct {\n\tint field\n}',
+    )
+
+    tree = document.parse()
+
+    ids = collect_identifiers(tree, document)
+
+    assert ids == [
+        DocumentSemanticToken(range=(8, 19), type="package_identifier"),
+        DocumentSemanticToken(range=(41, 45), type="identifier"),
+        DocumentSemanticToken(range=(50, 51), type="identifier"),
+        DocumentSemanticToken(range=(75, 80), type="type_identifier"),
+        DocumentSemanticToken(range=(91, 94), type="field_identifier"),
+        DocumentSemanticToken(range=(95, 100), type="type_identifier"),
+    ]
+
+    assert [id.to_bytes(document.content) for id in ids] == [
+        b"hello_world",
+        b"main",
+        b"a",
+        b"Hello",
+        b"int",
+        b"field",
+    ]
+
+
+def test_collect_identifiers_python():
+    document = Document(
+        lang="python", content=b'from abc import bcd\n\ndef main():\n\tabc = "abc"\n'
+    )
+
+    tree = document.parse()
+
+    ids = collect_identifiers(tree, document)
+
+    assert ids == [
+        DocumentSemanticToken(range=(5, 8), type="identifier"),
+        DocumentSemanticToken(range=(16, 19), type="identifier"),
+        DocumentSemanticToken(range=(25, 29), type="identifier"),
+        DocumentSemanticToken(range=(34, 37), type="identifier"),
+    ]
+
+    assert [id.to_bytes(document.content) for id in ids] == [
+        b"abc",
+        b"bcd",
+        b"main",
+        b"abc",
+    ]
+
+
+def test_collect_identifiers_java():
+    document = Document(
+        lang="java",
+        content=b"class HelloWorld {\n    public static void main(String[] args) {\n        int number = 42;\n    }\n}",
+    )
+
+    tree = document.parse()
+
+    ids = collect_identifiers(tree, document)
+
+    assert ids == [
+        DocumentSemanticToken(range=(6, 16), type="identifier"),
+        DocumentSemanticToken(range=(42, 46), type="identifier"),
+        DocumentSemanticToken(range=(47, 53), type="type_identifier"),
+        DocumentSemanticToken(range=(56, 60), type="identifier"),
+        DocumentSemanticToken(range=(76, 82), type="identifier"),
+    ]
+
+    assert [id.to_bytes(document.content) for id in ids] == [
+        b"HelloWorld",
+        b"main",
+        b"String",
+        b"args",
+        b"number",
+    ]
+
+
+def test_collect_identifiers_javascript():
+    document = Document(
+        lang="javascript",
+        content=b"class Hello {}\n function main() {\n    let i = console.log();\n}\n",
+    )
+
+    tree = document.parse()
+
+    ids = collect_identifiers(tree, document)
+
+    assert ids == [
+        DocumentSemanticToken(range=(6, 11), type="identifier"),
+        DocumentSemanticToken(range=(25, 29), type="identifier"),
+        DocumentSemanticToken(range=(42, 43), type="identifier"),
+        DocumentSemanticToken(range=(46, 53), type="identifier"),
+        DocumentSemanticToken(range=(54, 57), type="property_identifier"),
+    ]
+
+    assert [id.to_bytes(document.content) for id in ids] == [
+        b"Hello",
+        b"main",
+        b"i",
+        b"console",
+        b"log",
+    ]
+
+
+def test_collect_identifiers_cpp():
+    document = Document(
+        lang="c++",
+        content=b"#include <iostream>\n\nint main() {\n\tstd::cout << myvar;\n};\nclass Hello {int x;};\n",
+    )
+
+    tree = document.parse()
+
+    ids = collect_identifiers(tree, document)
+
+    assert ids == [
+        DocumentSemanticToken(range=(25, 29), type="identifier"),
+        DocumentSemanticToken(range=(35, 38), type="namespace_identifier"),
+        DocumentSemanticToken(range=(40, 44), type="identifier"),
+        DocumentSemanticToken(range=(48, 53), type="identifier"),
+        DocumentSemanticToken(range=(64, 69), type="type_identifier"),
+        DocumentSemanticToken(range=(75, 76), type="field_identifier"),
+    ]
+
+    assert [id.to_bytes(document.content) for id in ids] == [
+        b"main",
+        b"std",
+        b"cout",
+        b"myvar",
+        b"Hello",
+        b"x",
+    ]
+
+
+def test_compute_jaccard_similarity_score():
+    assert (
+        compute_jaccard_similarity_score(set(["a", "b", "c"]), set(["a", "b", "c"]))
+        == 1.0
+    )
+
+    spiral_outputs = [["user", "Count"], ["xml", "Form", "Template"]]
+    tokenizer_outputs = [["user", "Count"], ["x", "ml", "Form", "Template"]]
+    scores = []
+
+    for spiral_set, tokenizer_set in zip(spiral_outputs, tokenizer_outputs):
+        scores.append(
+            compute_jaccard_similarity_score(set(spiral_set), set(tokenizer_set))
+        )
+
+    assert scores == [1.0, 0.4]
+
+
+def test_spiral_usage():
+    expected = [
+        ["m", "Start", "C", "Data"],
+        ["nonnegative", "decimal", "type"],
+        ["get", "Utf8", "Octets"],
+        ["GPS", "module"],
+        ["save", "file", "as"],
+        ["nbr", "Of", "bugs"],
+    ]
+    actual = []
+
+    for s in [
+        "mStartCData",
+        "nonnegativedecimaltype",
+        "getUtf8Octets",
+        "GPSmodule",
+        "savefileas",
+        "nbrOfbugs",
+    ]:
+        actual.append(ronin.split(s))
+
+    assert actual == expected
