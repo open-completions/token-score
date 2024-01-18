@@ -2,7 +2,7 @@ from spiral import ronin
 
 from token_score import (
     Document,
-    DocumentSemanticToken,
+    SemanticToken,
     collect_identifiers,
     collect_semantic_tokens,
     compute_jaccard_similarity_score,
@@ -21,29 +21,29 @@ def test_collect_semantic_tokens_go():
         tree,
         document.content,
     ) == [
-        DocumentSemanticToken(range=(0, 7), type="package"),
-        DocumentSemanticToken(range=(7, 8), type="whitespace"),
-        DocumentSemanticToken(range=(8, 19), type="package_identifier"),
-        DocumentSemanticToken(range=(19, 21), type="\n"),
-        DocumentSemanticToken(range=(21, 35), type="comment"),
-        DocumentSemanticToken(range=(35, 36), type="whitespace"),
-        DocumentSemanticToken(range=(36, 40), type="func"),
-        DocumentSemanticToken(range=(40, 41), type="whitespace"),
-        DocumentSemanticToken(range=(41, 45), type="identifier"),
-        DocumentSemanticToken(range=(45, 46), type="("),
-        DocumentSemanticToken(range=(46, 47), type=")"),
-        DocumentSemanticToken(range=(47, 48), type="whitespace"),
-        DocumentSemanticToken(range=(48, 49), type="{"),
-        DocumentSemanticToken(range=(49, 50), type="whitespace"),
-        DocumentSemanticToken(range=(50, 51), type="identifier"),
-        DocumentSemanticToken(range=(51, 52), type="whitespace"),
-        DocumentSemanticToken(range=(52, 54), type=":="),
-        DocumentSemanticToken(range=(54, 55), type="whitespace"),
-        DocumentSemanticToken(range=(55, 56), type='"'),
-        DocumentSemanticToken(range=(56, 67), type="whitespace"),
-        DocumentSemanticToken(range=(67, 68), type='"'),
-        DocumentSemanticToken(range=(68, 69), type="}"),
-        DocumentSemanticToken(range=(69, 70), type="\n"),
+        SemanticToken(range=(0, 7), type="package"),
+        SemanticToken(range=(7, 8), type="whitespace"),
+        SemanticToken(range=(8, 19), type="package_identifier"),
+        SemanticToken(range=(19, 21), type="\n"),
+        SemanticToken(range=(21, 35), type="comment"),
+        SemanticToken(range=(35, 36), type="whitespace"),
+        SemanticToken(range=(36, 40), type="func"),
+        SemanticToken(range=(40, 41), type="whitespace"),
+        SemanticToken(range=(41, 45), type="identifier"),
+        SemanticToken(range=(45, 46), type="("),
+        SemanticToken(range=(46, 47), type=")"),
+        SemanticToken(range=(47, 48), type="whitespace"),
+        SemanticToken(range=(48, 49), type="{"),
+        SemanticToken(range=(49, 50), type="whitespace"),
+        SemanticToken(range=(50, 51), type="identifier"),
+        SemanticToken(range=(51, 52), type="whitespace"),
+        SemanticToken(range=(52, 54), type=":="),
+        SemanticToken(range=(54, 55), type="whitespace"),
+        SemanticToken(range=(55, 56), type='"'),
+        SemanticToken(range=(56, 67), type="whitespace"),
+        SemanticToken(range=(67, 68), type='"'),
+        SemanticToken(range=(68, 69), type="}"),
+        SemanticToken(range=(69, 70), type="\n"),
     ]
 
 
@@ -58,23 +58,23 @@ def test_collect_semantic_tokens_python():
         tree,
         document.content,
     ) == [
-        DocumentSemanticToken(range=(0, 13), type="comment"),
-        DocumentSemanticToken(range=(13, 14), type="whitespace"),
-        DocumentSemanticToken(range=(14, 17), type="def"),
-        DocumentSemanticToken(range=(17, 18), type="whitespace"),
-        DocumentSemanticToken(range=(18, 22), type="identifier"),
-        DocumentSemanticToken(range=(22, 23), type="("),
-        DocumentSemanticToken(range=(23, 24), type=")"),
-        DocumentSemanticToken(range=(24, 25), type=":"),
-        DocumentSemanticToken(range=(25, 27), type="whitespace"),
-        DocumentSemanticToken(range=(27, 30), type="identifier"),
-        DocumentSemanticToken(range=(30, 31), type="whitespace"),
-        DocumentSemanticToken(range=(31, 32), type="="),
-        DocumentSemanticToken(range=(32, 33), type="whitespace"),
-        DocumentSemanticToken(range=(33, 34), type='"'),
-        DocumentSemanticToken(range=(34, 37), type="whitespace"),
-        DocumentSemanticToken(range=(37, 38), type='"'),
-        DocumentSemanticToken(range=(38, 39), type="whitespace"),
+        SemanticToken(range=(0, 13), type="comment"),
+        SemanticToken(range=(13, 14), type="whitespace"),
+        SemanticToken(range=(14, 17), type="def"),
+        SemanticToken(range=(17, 18), type="whitespace"),
+        SemanticToken(range=(18, 22), type="identifier"),
+        SemanticToken(range=(22, 23), type="("),
+        SemanticToken(range=(23, 24), type=")"),
+        SemanticToken(range=(24, 25), type=":"),
+        SemanticToken(range=(25, 27), type="whitespace"),
+        SemanticToken(range=(27, 30), type="identifier"),
+        SemanticToken(range=(30, 31), type="whitespace"),
+        SemanticToken(range=(31, 32), type="="),
+        SemanticToken(range=(32, 33), type="whitespace"),
+        SemanticToken(range=(33, 34), type='"'),
+        SemanticToken(range=(34, 37), type="whitespace"),
+        SemanticToken(range=(37, 38), type='"'),
+        SemanticToken(range=(38, 39), type="whitespace"),
     ]
 
 
@@ -90,40 +90,40 @@ def test_collect_semantic_tokens_java():
         tree,
         document.content,
     ) == [
-        DocumentSemanticToken(range=(0, 7), type="package"),
-        DocumentSemanticToken(range=(7, 8), type="whitespace"),  # " "
-        DocumentSemanticToken(range=(8, 19), type="identifier"),
-        DocumentSemanticToken(range=(19, 20), type=";"),
-        DocumentSemanticToken(range=(20, 22), type="whitespace"),  # "\n\n"
-        DocumentSemanticToken(range=(22, 28), type="public"),
-        DocumentSemanticToken(range=(28, 29), type="whitespace"),  # " "
-        DocumentSemanticToken(range=(29, 34), type="class"),
-        DocumentSemanticToken(range=(34, 35), type="whitespace"),  # " "
-        DocumentSemanticToken(range=(35, 39), type="identifier"),
-        DocumentSemanticToken(range=(39, 40), type="whitespace"),  # " "
-        DocumentSemanticToken(range=(40, 41), type="{"),
-        DocumentSemanticToken(range=(41, 43), type="whitespace"),  # "\n\t"
-        DocumentSemanticToken(range=(43, 49), type="public"),
-        DocumentSemanticToken(range=(49, 50), type="whitespace"),  # " "
-        DocumentSemanticToken(range=(50, 56), type="static"),
-        DocumentSemanticToken(range=(56, 57), type="whitespace"),  # " "
-        DocumentSemanticToken(range=(57, 61), type="void_type"),
-        DocumentSemanticToken(range=(61, 62), type="whitespace"),  # " "
-        DocumentSemanticToken(range=(62, 66), type="identifier"),
-        DocumentSemanticToken(range=(66, 67), type="("),
-        DocumentSemanticToken(range=(67, 73), type="type_identifier"),
-        DocumentSemanticToken(range=(73, 74), type="["),
-        DocumentSemanticToken(range=(74, 75), type="]"),
-        DocumentSemanticToken(range=(75, 76), type="whitespace"),  # " "
-        DocumentSemanticToken(range=(76, 80), type="identifier"),
-        DocumentSemanticToken(range=(80, 81), type=")"),
-        DocumentSemanticToken(range=(81, 82), type="whitespace"),  # " "
-        DocumentSemanticToken(range=(82, 83), type="{"),
-        DocumentSemanticToken(range=(83, 85), type="whitespace"),  # "\n\t"
-        DocumentSemanticToken(range=(85, 86), type="}"),
-        DocumentSemanticToken(range=(86, 87), type="whitespace"),  # "\n"
-        DocumentSemanticToken(range=(87, 88), type="}"),
-        DocumentSemanticToken(range=(88, 89), type="whitespace"),  # "\n"
+        SemanticToken(range=(0, 7), type="package"),
+        SemanticToken(range=(7, 8), type="whitespace"),  # " "
+        SemanticToken(range=(8, 19), type="identifier"),
+        SemanticToken(range=(19, 20), type=";"),
+        SemanticToken(range=(20, 22), type="whitespace"),  # "\n\n"
+        SemanticToken(range=(22, 28), type="public"),
+        SemanticToken(range=(28, 29), type="whitespace"),  # " "
+        SemanticToken(range=(29, 34), type="class"),
+        SemanticToken(range=(34, 35), type="whitespace"),  # " "
+        SemanticToken(range=(35, 39), type="identifier"),
+        SemanticToken(range=(39, 40), type="whitespace"),  # " "
+        SemanticToken(range=(40, 41), type="{"),
+        SemanticToken(range=(41, 43), type="whitespace"),  # "\n\t"
+        SemanticToken(range=(43, 49), type="public"),
+        SemanticToken(range=(49, 50), type="whitespace"),  # " "
+        SemanticToken(range=(50, 56), type="static"),
+        SemanticToken(range=(56, 57), type="whitespace"),  # " "
+        SemanticToken(range=(57, 61), type="void_type"),
+        SemanticToken(range=(61, 62), type="whitespace"),  # " "
+        SemanticToken(range=(62, 66), type="identifier"),
+        SemanticToken(range=(66, 67), type="("),
+        SemanticToken(range=(67, 73), type="type_identifier"),
+        SemanticToken(range=(73, 74), type="["),
+        SemanticToken(range=(74, 75), type="]"),
+        SemanticToken(range=(75, 76), type="whitespace"),  # " "
+        SemanticToken(range=(76, 80), type="identifier"),
+        SemanticToken(range=(80, 81), type=")"),
+        SemanticToken(range=(81, 82), type="whitespace"),  # " "
+        SemanticToken(range=(82, 83), type="{"),
+        SemanticToken(range=(83, 85), type="whitespace"),  # "\n\t"
+        SemanticToken(range=(85, 86), type="}"),
+        SemanticToken(range=(86, 87), type="whitespace"),  # "\n"
+        SemanticToken(range=(87, 88), type="}"),
+        SemanticToken(range=(88, 89), type="whitespace"),  # "\n"
     ]
 
 
@@ -139,27 +139,27 @@ def test_collect_semantic_tokens_javascript():
         tree,
         document.content,
     ) == [
-        DocumentSemanticToken(range=(0, 8), type="function"),
-        DocumentSemanticToken(range=(8, 9), type="whitespace"),
-        DocumentSemanticToken(range=(9, 13), type="identifier"),
-        DocumentSemanticToken(range=(13, 14), type="("),
-        DocumentSemanticToken(range=(14, 15), type=")"),
-        DocumentSemanticToken(range=(15, 16), type="whitespace"),
-        DocumentSemanticToken(range=(16, 17), type="{"),
-        DocumentSemanticToken(range=(17, 22), type="whitespace"),
-        DocumentSemanticToken(range=(22, 36), type="comment"),
-        DocumentSemanticToken(range=(36, 41), type="whitespace"),
-        DocumentSemanticToken(range=(41, 44), type="let"),
-        DocumentSemanticToken(range=(44, 45), type="whitespace"),
-        DocumentSemanticToken(range=(45, 46), type="identifier"),
-        DocumentSemanticToken(range=(46, 47), type="whitespace"),
-        DocumentSemanticToken(range=(47, 48), type="="),
-        DocumentSemanticToken(range=(48, 49), type="whitespace"),
-        DocumentSemanticToken(range=(49, 51), type="number"),
-        DocumentSemanticToken(range=(51, 52), type=";"),
-        DocumentSemanticToken(range=(52, 53), type="whitespace"),
-        DocumentSemanticToken(range=(53, 54), type="}"),
-        DocumentSemanticToken(range=(54, 55), type="whitespace"),
+        SemanticToken(range=(0, 8), type="function"),
+        SemanticToken(range=(8, 9), type="whitespace"),
+        SemanticToken(range=(9, 13), type="identifier"),
+        SemanticToken(range=(13, 14), type="("),
+        SemanticToken(range=(14, 15), type=")"),
+        SemanticToken(range=(15, 16), type="whitespace"),
+        SemanticToken(range=(16, 17), type="{"),
+        SemanticToken(range=(17, 22), type="whitespace"),
+        SemanticToken(range=(22, 36), type="comment"),
+        SemanticToken(range=(36, 41), type="whitespace"),
+        SemanticToken(range=(41, 44), type="let"),
+        SemanticToken(range=(44, 45), type="whitespace"),
+        SemanticToken(range=(45, 46), type="identifier"),
+        SemanticToken(range=(46, 47), type="whitespace"),
+        SemanticToken(range=(47, 48), type="="),
+        SemanticToken(range=(48, 49), type="whitespace"),
+        SemanticToken(range=(49, 51), type="number"),
+        SemanticToken(range=(51, 52), type=";"),
+        SemanticToken(range=(52, 53), type="whitespace"),
+        SemanticToken(range=(53, 54), type="}"),
+        SemanticToken(range=(54, 55), type="whitespace"),
     ]
 
 
@@ -175,36 +175,36 @@ def test_collect_semantic_tokens_cpp():
         tree,
         document.content,
     ) == [
-        DocumentSemanticToken(range=(0, 8), type="#include"),
-        DocumentSemanticToken(range=(8, 9), type="whitespace"),
-        DocumentSemanticToken(range=(9, 19), type="system_lib_string"),
-        DocumentSemanticToken(range=(19, 21), type="\n"),
-        DocumentSemanticToken(range=(21, 24), type="primitive_type"),
-        DocumentSemanticToken(range=(24, 25), type="whitespace"),
-        DocumentSemanticToken(range=(25, 29), type="identifier"),
-        DocumentSemanticToken(range=(29, 30), type="("),
-        DocumentSemanticToken(range=(30, 31), type=")"),
-        DocumentSemanticToken(range=(31, 32), type="whitespace"),
-        DocumentSemanticToken(range=(32, 33), type="{"),
-        DocumentSemanticToken(range=(33, 35), type="whitespace"),
-        DocumentSemanticToken(range=(35, 38), type="namespace_identifier"),
-        DocumentSemanticToken(range=(38, 40), type="::"),
-        DocumentSemanticToken(range=(40, 44), type="identifier"),
-        DocumentSemanticToken(range=(44, 45), type="whitespace"),
-        DocumentSemanticToken(range=(45, 47), type="<<"),
-        DocumentSemanticToken(range=(47, 48), type="whitespace"),
-        DocumentSemanticToken(range=(48, 49), type='"'),
-        DocumentSemanticToken(range=(49, 61), type="whitespace"),
-        DocumentSemanticToken(range=(61, 62), type='"'),
-        DocumentSemanticToken(range=(62, 63), type=";"),
-        DocumentSemanticToken(range=(63, 65), type="whitespace"),
-        DocumentSemanticToken(range=(65, 71), type="return"),
-        DocumentSemanticToken(range=(71, 72), type="whitespace"),
-        DocumentSemanticToken(range=(72, 73), type="number_literal"),
-        DocumentSemanticToken(range=(73, 74), type=";"),
-        DocumentSemanticToken(range=(74, 75), type="whitespace"),
-        DocumentSemanticToken(range=(75, 76), type="}"),
-        DocumentSemanticToken(range=(76, 77), type="whitespace"),
+        SemanticToken(range=(0, 8), type="#include"),
+        SemanticToken(range=(8, 9), type="whitespace"),
+        SemanticToken(range=(9, 19), type="system_lib_string"),
+        SemanticToken(range=(19, 21), type="\n"),
+        SemanticToken(range=(21, 24), type="primitive_type"),
+        SemanticToken(range=(24, 25), type="whitespace"),
+        SemanticToken(range=(25, 29), type="identifier"),
+        SemanticToken(range=(29, 30), type="("),
+        SemanticToken(range=(30, 31), type=")"),
+        SemanticToken(range=(31, 32), type="whitespace"),
+        SemanticToken(range=(32, 33), type="{"),
+        SemanticToken(range=(33, 35), type="whitespace"),
+        SemanticToken(range=(35, 38), type="namespace_identifier"),
+        SemanticToken(range=(38, 40), type="::"),
+        SemanticToken(range=(40, 44), type="identifier"),
+        SemanticToken(range=(44, 45), type="whitespace"),
+        SemanticToken(range=(45, 47), type="<<"),
+        SemanticToken(range=(47, 48), type="whitespace"),
+        SemanticToken(range=(48, 49), type='"'),
+        SemanticToken(range=(49, 61), type="whitespace"),
+        SemanticToken(range=(61, 62), type='"'),
+        SemanticToken(range=(62, 63), type=";"),
+        SemanticToken(range=(63, 65), type="whitespace"),
+        SemanticToken(range=(65, 71), type="return"),
+        SemanticToken(range=(71, 72), type="whitespace"),
+        SemanticToken(range=(72, 73), type="number_literal"),
+        SemanticToken(range=(73, 74), type=";"),
+        SemanticToken(range=(74, 75), type="whitespace"),
+        SemanticToken(range=(75, 76), type="}"),
+        SemanticToken(range=(76, 77), type="whitespace"),
     ]
 
 
@@ -219,15 +219,15 @@ def test_collect_identifiers_go():
     ids = collect_identifiers(tree, document)
 
     assert ids == [
-        DocumentSemanticToken(range=(8, 19), type="package_identifier"),
-        DocumentSemanticToken(range=(41, 45), type="identifier"),
-        DocumentSemanticToken(range=(50, 51), type="identifier"),
-        DocumentSemanticToken(range=(75, 80), type="type_identifier"),
-        DocumentSemanticToken(range=(91, 94), type="field_identifier"),
-        DocumentSemanticToken(range=(95, 100), type="type_identifier"),
+        SemanticToken(range=(8, 19), type="package_identifier"),
+        SemanticToken(range=(41, 45), type="identifier"),
+        SemanticToken(range=(50, 51), type="identifier"),
+        SemanticToken(range=(75, 80), type="type_identifier"),
+        SemanticToken(range=(91, 94), type="field_identifier"),
+        SemanticToken(range=(95, 100), type="type_identifier"),
     ]
 
-    assert [id.to_bytes(document.content) for id in ids] == [
+    assert [document.token_to_bytes(id) for id in ids] == [
         b"hello_world",
         b"main",
         b"a",
@@ -247,13 +247,13 @@ def test_collect_identifiers_python():
     ids = collect_identifiers(tree, document)
 
     assert ids == [
-        DocumentSemanticToken(range=(5, 8), type="identifier"),
-        DocumentSemanticToken(range=(16, 19), type="identifier"),
-        DocumentSemanticToken(range=(25, 29), type="identifier"),
-        DocumentSemanticToken(range=(34, 37), type="identifier"),
+        SemanticToken(range=(5, 8), type="identifier"),
+        SemanticToken(range=(16, 19), type="identifier"),
+        SemanticToken(range=(25, 29), type="identifier"),
+        SemanticToken(range=(34, 37), type="identifier"),
     ]
 
-    assert [id.to_bytes(document.content) for id in ids] == [
+    assert [document.token_to_bytes(id) for id in ids] == [
         b"abc",
         b"bcd",
         b"main",
@@ -272,14 +272,14 @@ def test_collect_identifiers_java():
     ids = collect_identifiers(tree, document)
 
     assert ids == [
-        DocumentSemanticToken(range=(6, 16), type="identifier"),
-        DocumentSemanticToken(range=(42, 46), type="identifier"),
-        DocumentSemanticToken(range=(47, 53), type="type_identifier"),
-        DocumentSemanticToken(range=(56, 60), type="identifier"),
-        DocumentSemanticToken(range=(76, 82), type="identifier"),
+        SemanticToken(range=(6, 16), type="identifier"),
+        SemanticToken(range=(42, 46), type="identifier"),
+        SemanticToken(range=(47, 53), type="type_identifier"),
+        SemanticToken(range=(56, 60), type="identifier"),
+        SemanticToken(range=(76, 82), type="identifier"),
     ]
 
-    assert [id.to_bytes(document.content) for id in ids] == [
+    assert [document.token_to_bytes(id) for id in ids] == [
         b"HelloWorld",
         b"main",
         b"String",
@@ -299,14 +299,14 @@ def test_collect_identifiers_javascript():
     ids = collect_identifiers(tree, document)
 
     assert ids == [
-        DocumentSemanticToken(range=(6, 11), type="identifier"),
-        DocumentSemanticToken(range=(25, 29), type="identifier"),
-        DocumentSemanticToken(range=(42, 43), type="identifier"),
-        DocumentSemanticToken(range=(46, 53), type="identifier"),
-        DocumentSemanticToken(range=(54, 57), type="property_identifier"),
+        SemanticToken(range=(6, 11), type="identifier"),
+        SemanticToken(range=(25, 29), type="identifier"),
+        SemanticToken(range=(42, 43), type="identifier"),
+        SemanticToken(range=(46, 53), type="identifier"),
+        SemanticToken(range=(54, 57), type="property_identifier"),
     ]
 
-    assert [id.to_bytes(document.content) for id in ids] == [
+    assert [document.token_to_bytes(id) for id in ids] == [
         b"Hello",
         b"main",
         b"i",
@@ -326,15 +326,15 @@ def test_collect_identifiers_cpp():
     ids = collect_identifiers(tree, document)
 
     assert ids == [
-        DocumentSemanticToken(range=(25, 29), type="identifier"),
-        DocumentSemanticToken(range=(35, 38), type="namespace_identifier"),
-        DocumentSemanticToken(range=(40, 44), type="identifier"),
-        DocumentSemanticToken(range=(48, 53), type="identifier"),
-        DocumentSemanticToken(range=(64, 69), type="type_identifier"),
-        DocumentSemanticToken(range=(75, 76), type="field_identifier"),
+        SemanticToken(range=(25, 29), type="identifier"),
+        SemanticToken(range=(35, 38), type="namespace_identifier"),
+        SemanticToken(range=(40, 44), type="identifier"),
+        SemanticToken(range=(48, 53), type="identifier"),
+        SemanticToken(range=(64, 69), type="type_identifier"),
+        SemanticToken(range=(75, 76), type="field_identifier"),
     ]
 
-    assert [id.to_bytes(document.content) for id in ids] == [
+    assert [document.token_to_bytes(id) for id in ids] == [
         b"main",
         b"std",
         b"cout",
@@ -384,3 +384,7 @@ def test_spiral_usage():
         actual.append(ronin.split(s))
 
     assert actual == expected
+
+    assert ronin.split("snake_case") == ["snake", "case"]
+    assert ronin.split("InvalidCamel_CaseName") == ["Invalid", "Camel", "Case", "Name"]
+    assert ronin.split("a space") == ["a", "space"]

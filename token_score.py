@@ -1,6 +1,8 @@
-from typing import Any, Dict, List, Set, Tuple
+from dataclasses import dataclass
+from typing import Dict, List, Set, Tuple
 
 from pydantic import BaseModel
+from spiral import ronin
 from tree_sitter import Language as TSLanguage
 from tree_sitter import Node as TSNode
 from tree_sitter import Parser as TSParser
@@ -19,6 +21,42 @@ LANGUAGES = set(
 )
 
 
+class Token(BaseModel):
+    """A token is a byte range over a source code document"""
+
+    range: Tuple[int, int]
+
+
+class SemanticToken(Token):
+    """A structure that holds a semantic token and its byte range over the
+    document's content."""
+
+    # The token's semantic type.
+    type: str
+
+
+class Document(BaseModel):
+    """A structure that holds the content of a source code file."""
+
+    # The language of the document.
+    lang: str
+
+    # The content of the document.
+    content: bytes
+
+    def parse(self) -> TSTree:
+        """Returns the AST of the document."""
+        return TS_PARSERS[self.lang].parse(self.content)
+
+    def token_to_bytes(self, token: Token) -> bytes:
+        """Returns the bytes of the token."""
+        return self.content[token.range[0] : token.range[1]]
+
+    def token_to_string(self, token: Token) -> str:
+        """Returns the string of the token."""
+        return self.token_to_bytes(token).decode("utf-8")
+
+
 class TokenScoreMetrics(BaseModel):
     """Holds tokenization evaluation metrics of a tokenization pipeline,
     generally over a single programming language."""
@@ -31,6 +69,10 @@ class TokenScoreMetrics(BaseModel):
     #
     # Example: "numberOfUsers" -> ["number", "Of", "Users"]
     identifier_splitting_score: float
+
+    # A measure of the tokenizer's ability to split code identifiers at
+    # canonical boundaries but using the raw tokens produced by the tokenizer.
+    raw_identifier_splitting_score: float
 
     # A measure of the tokenizer's ability to split the source code sequence
     # at canonical boundaries according to the language's grammar.
@@ -52,12 +94,6 @@ class TokenScore(BaseModel):
     # The metrics for each programming language.
     metrics: Dict[str, TokenScoreMetrics]
 
-    # Parity assesses the fairness of a tokenizer in treating equivalent
-    # sequences across different programming languages.
-    #
-    # TODO: Add parity metrics.
-    parity: Any
-
     # The total number of tokens in the dataset.
     total_tokens: int
 
@@ -65,58 +101,154 @@ class TokenScore(BaseModel):
     total_bytes: int
 
 
-class Document(BaseModel):
-    """A structure that holds the content of a source code file."""
+class IdentifierSplits(BaseModel):
+    identifier: SemanticToken
 
-    # The language of the document.
-    lang: str
+    raw_tokenizer_splits: List[str]
 
-    # The content of the document.
-    content: bytes
+    tokenizer_splits: List[str]
 
-    def parse(self) -> TSTree:
-        """Returns the AST of the document."""
-        return TS_PARSERS[self.lang].parse(self.content)
+    authoritative_splits: List[str]
 
 
-class DocumentSemanticToken(BaseModel):
-    """A structure that holds a semantic token and its byte range over the
-    document's content."""
+@dataclass
+class TokenScoreResult:
+    """All the artefacts produced when computing token score."""
 
-    # The token's byte range over the document's content.
-    range: Tuple[int, int]
+    tree: TSTree
 
-    # The token's semantic type.
-    type: str
+    identifiers: List[SemanticToken]
 
-    def to_bytes(self, content: bytes) -> bytes:
-        """Returns the bytes content of the token using the document's content."""
-        return content[self.range[0] : self.range[1]]
+    identifier_splits: List[IdentifierSplits]
 
+    semantic_tokens: List[SemanticToken]
 
-class DocumentParserResult(BaseModel):
-    """The result of parsing a document using a parser. Contains a list of
-    byte ranges over the document's content that correspond to semantic AST
-    tokens (e.g. identifiers, literals, operators, etc.)."""
-
-    # The list of semantic tokens and their byte ranges over the document's
-    # content.
-    semantic_tokens: List[DocumentSemanticToken]
+    metrics: TokenScoreMetrics
 
 
-def compute_token_score(documents: Dict[str, Document]) -> TokenScore:
-    """Computes the token score of a set of documents."""
-    return TokenScore(
-        metrics={},
-        parity=None,
-        total_tokens=0,
-        total_bytes=0,
+def compute_token_score(document: Document, tokens: List[Token]) -> TokenScoreResult:
+    """Computes the token score of document."""
+
+    tree = document.parse()
+
+    identifiers = collect_identifiers(tree, document)
+
+    semantic_tokens = collect_semantic_tokens(tree, document.content)
+
+    compression = len(document.content) / len(semantic_tokens)
+
+    (
+        identifier_splitting_score,
+        raw_identifier_splitting_score,
+        identifier_splits,
+    ) = compute_identifier_splitting_score(document, identifiers, tokens)
+
+    syntax_splitting_score = 0
+
+    return TokenScoreResult(
+        metrics=TokenScoreMetrics(
+            compression=compression,
+            identifier_splitting_score=identifier_splitting_score,
+            raw_identifier_splitting_score=raw_identifier_splitting_score,
+            syntax_splitting_score=syntax_splitting_score,
+            total_tokens=len(semantic_tokens),
+            total_bytes=len(document.content),
+        ),
+        tree=tree,
+        semantic_tokens=semantic_tokens,
+        identifier_splits=identifier_splits,
+        identifiers=identifiers,
     )
 
 
-def collect_identifiers(
-    tree: TSTree, document: Document
-) -> List[DocumentSemanticToken]:
+def compute_identifier_splitting_score(
+    document: Document,
+    identifiers: List[SemanticToken],
+    tokens: List[Token],
+) -> Tuple[float, float, List[IdentifierSplits]]:
+    """Computes the identifier splitting score of a document."""
+
+    jaccard_similarity_count = 0
+    jaccard_similarity_sum = 0
+
+    raw_jaccard_similarity_count = 0
+    raw_jaccard_similarity_sum = 0
+
+    identifier_splits = []
+
+    for identifier in identifiers:
+        try:
+            # This shouldn't happen as code identifiers are generally valid
+            # UTF-8.
+            identifier_str = document.token_to_string(identifier)
+        except UnicodeDecodeError:
+            continue
+
+        raw_tokenizer_splits = [
+            document.token_to_bytes(token).decode("utf-8", errors="ignore")
+            for token in tokens
+            if identifier.range[0] < token.range[1]
+            and token.range[1] <= identifier.range[1]
+        ]
+
+        # Find all the tokens that span the identifier's byte range.
+        tokenizer_splits = [
+            # We create a new token to ensure that, when considering the
+            # identifier "abc" in the snippet "let abc = 10;", the token
+            # "abc" is not polluted by any extra characters that would come
+            # after or before it.
+            # The rationale for ignoring errors is that if a token is not valid
+            # UTF-8 then it's by definition not a correct split.
+            document.token_to_bytes(
+                Token(
+                    range=(
+                        max(token.range[0], identifier.range[0]),
+                        min(token.range[1], identifier.range[1]),
+                    )
+                )
+            )
+            .decode("utf-8", errors="ignore")
+            .replace("_", "")
+            for token in tokens
+            if identifier.range[0] < token.range[1]
+            and token.range[1] <= identifier.range[1]
+        ]
+
+        tokenizer_splits = list(filter(None, tokenizer_splits))
+
+        authoritative_splits = ronin.split(identifier_str)
+
+        jaccard_similarity_count += 1
+        jaccard_similarity_sum += compute_jaccard_similarity_score(
+            set(tokenizer_splits), set(authoritative_splits)
+        )
+
+        raw_jaccard_similarity_count += 1
+        raw_jaccard_similarity_sum += compute_jaccard_similarity_score(
+            set(raw_tokenizer_splits), set(authoritative_splits)
+        )
+
+        identifier_splits.append(
+            IdentifierSplits(
+                identifier=identifier,
+                tokenizer_splits=tokenizer_splits,
+                raw_tokenizer_splits=raw_tokenizer_splits,
+                authoritative_splits=authoritative_splits,
+            )
+        )
+
+    jaccard = 0
+    if jaccard_similarity_count != 0:
+        jaccard = jaccard_similarity_sum / jaccard_similarity_count
+
+    raw_jaccard = 0
+    if raw_jaccard_similarity_count != 0:
+        raw_jaccard = raw_jaccard_similarity_sum / raw_jaccard_similarity_count
+
+    return jaccard, raw_jaccard, identifier_splits
+
+
+def collect_identifiers(tree: TSTree, document: Document) -> List[SemanticToken]:
     """Collects the identifiers of the AST and their byte ranges over the
     document's content."""
 
@@ -127,7 +259,7 @@ def collect_identifiers(
     matches = query.captures(tree.root_node)
 
     identifiers = [
-        DocumentSemanticToken(
+        SemanticToken(
             range=(match[0].start_byte, match[0].end_byte), type=match[0].type
         )
         for match in matches
@@ -136,9 +268,7 @@ def collect_identifiers(
     return identifiers
 
 
-def collect_semantic_tokens(
-    tree: TSTree, content: bytes
-) -> List[DocumentSemanticToken]:
+def collect_semantic_tokens(tree: TSTree, content: bytes) -> List[SemanticToken]:
     """Collects the leaf nodes of the AST and their byte ranges over the
     document's content."""
     semantic_tokens = []
@@ -155,14 +285,12 @@ def collect_semantic_tokens(
 
             if prev_end_byte != node.start_byte:
                 semantic_tokens.append(
-                    DocumentSemanticToken(
+                    SemanticToken(
                         range=(prev_end_byte, node.start_byte), type="whitespace"
                     )
                 )
 
-            semantic_tokens.append(
-                DocumentSemanticToken(range=token_range, type=token_type)
-            )
+            semantic_tokens.append(SemanticToken(range=token_range, type=token_type))
 
             prev_start_byte = node.start_byte
             prev_end_byte = node.end_byte
@@ -174,9 +302,7 @@ def collect_semantic_tokens(
 
     if prev_end_byte < len(content):
         semantic_tokens.append(
-            DocumentSemanticToken(
-                range=(prev_end_byte, len(content)), type="whitespace"
-            )
+            SemanticToken(range=(prev_end_byte, len(content)), type="whitespace")
         )
 
     return semantic_tokens
@@ -186,6 +312,10 @@ def compute_jaccard_similarity_score(set1: Set[str], set2: Set[str]) -> float:
     """Calculate the Jaccard Similarity between two sets of splits."""
     intersection = len(set1.intersection(set2))
     union = len(set1.union(set2))
+
+    if union == 0:
+        return 0
+
     return intersection / union
 
 
@@ -219,10 +349,6 @@ __TREE_SITTER_LANGUAGE_SLUGS = {
     "python": "python",
 }
 
-TS_LANGUAGES = __build_languages()
-
-TS_PARSERS = __build_parsers()
-
 __TS_QUERIES = {
     "python": """
         (identifier) @id
@@ -248,3 +374,7 @@ __TS_QUERIES = {
         (field_identifier) @field_id
     """,
 }
+
+TS_LANGUAGES = __build_languages()
+
+TS_PARSERS = __build_parsers()
