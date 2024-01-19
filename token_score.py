@@ -11,7 +11,7 @@ from tree_sitter import Tree as TSTree
 from tree_sitter_languages import get_language as ts_get_language
 
 # The set of languages supported by TokenScore.
-LANGUAGES = set(
+SUPPORTED_LANGUAGES = set(
     [
         "c++",
         "go",
@@ -378,7 +378,7 @@ def compute_jaccard_similarity_score(set1: Set[str], set2: Set[str]) -> float:
 def __build_languages() -> Dict[str, TSLanguage]:
     """Builds a mapping from language name to tree-sitter language."""
     languages = {}
-    for lang in LANGUAGES:
+    for lang in SUPPORTED_LANGUAGES:
         languages[lang] = ts_get_language(__TREE_SITTER_LANGUAGE_SLUGS[lang])
     return languages
 
@@ -387,7 +387,7 @@ def __build_parsers() -> Dict[str, TSParser]:
     """Builds a TreeSitter parser for each language in the given list."""
 
     parsers = {}
-    for lang in LANGUAGES:
+    for lang in SUPPORTED_LANGUAGES:
         try:
             parsers[lang] = TSParser()
             parsers[lang].set_language(TS_LANGUAGES[lang])
