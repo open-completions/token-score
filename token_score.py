@@ -3,6 +3,7 @@ from typing import Dict, List, Set, Tuple
 
 from pydantic import BaseModel
 from spiral import ronin
+from tiktoken import Encoding as OAIEncoding
 from tree_sitter import Language as TSLanguage
 from tree_sitter import Node as TSNode
 from tree_sitter import Parser as TSParser
@@ -64,6 +65,9 @@ class TokenScoreMetrics(BaseModel):
     # The average number of bytes per token over the entire dataset.
     compression: float
 
+    # The average ratio of tokens per source code identifier.
+    identifier_fertility: float
+
     # A measure of the tokenizer's ability to split code identifiers at
     # canonical boundaries.
     #
@@ -75,10 +79,12 @@ class TokenScoreMetrics(BaseModel):
     raw_identifier_splitting_score: float
 
     # A measure of the tokenizer's ability to split the source code sequence
-    # at canonical boundaries according to the language's grammar.
+    # at canonical boundaries according to the language's grammar. It is
+    # computed by looking at the average number of semantic tokens that a single
+    # token spans.
     #
     # Example: "if None: return" -> ["if", " ", "None", ":", " ", "return"]
-    syntax_splitting_score: float
+    token_span_score: float
 
     # The total number of tokens in the dataset.
     total_tokens: int
@@ -140,17 +146,19 @@ def compute_token_score(document: Document, tokens: List[Token]) -> TokenScoreRe
     (
         identifier_splitting_score,
         raw_identifier_splitting_score,
+        identifier_fertility,
         identifier_splits,
     ) = compute_identifier_splitting_score(document, identifiers, tokens)
 
-    syntax_splitting_score = 0
+    token_span_score = compute_token_span_score(document, semantic_tokens, tokens)
 
     return TokenScoreResult(
         metrics=TokenScoreMetrics(
             compression=compression,
+            identifier_fertility=identifier_fertility,
             identifier_splitting_score=identifier_splitting_score,
             raw_identifier_splitting_score=raw_identifier_splitting_score,
-            syntax_splitting_score=syntax_splitting_score,
+            token_span_score=token_span_score,
             total_tokens=len(semantic_tokens),
             total_bytes=len(document.content),
         ),
@@ -161,11 +169,50 @@ def compute_token_score(document: Document, tokens: List[Token]) -> TokenScoreRe
     )
 
 
+def tokens_overlap(a: Token, b: Token) -> bool:
+    """Returns true if the two tokens overlap."""
+    return a.range[0] < b.range[1] and b.range[0] < a.range[1]
+
+
+def tiktoken_tokenizer(enc: OAIEncoding, document: Document) -> List[Token]:
+    ids = enc.encode_ordinary(document.content.decode("utf-8", errors="strict"))
+    token_bytes = [enc.decode_single_token_bytes(id) for id in ids]
+    tokens = []
+
+    offset = 0
+    for b in token_bytes:
+        tokens.append(Token(range=(offset, offset + len(b))))
+        offset += len(b)
+
+    return tokens
+
+
+def compute_token_span_score(
+    document: Document, semantic_tokens: List[SemanticToken], tokens: List[Token]
+) -> float:
+    """Computes the token span score of a document."""
+
+    token_span_score_sum = 0
+
+    for token in tokens:
+        for semantic_token in semantic_tokens:
+            if tokens_overlap(token, semantic_token):
+                token_span_score_sum += 1
+            if token.range[1] < semantic_token.range[0]:
+                break
+
+    token_span_score = 0
+    if len(tokens) != 0:
+        token_span_score = token_span_score_sum / len(tokens)
+
+    return token_span_score
+
+
 def compute_identifier_splitting_score(
     document: Document,
     identifiers: List[SemanticToken],
     tokens: List[Token],
-) -> Tuple[float, float, List[IdentifierSplits]]:
+) -> Tuple[float, float, float, List[IdentifierSplits]]:
     """Computes the identifier splitting score of a document."""
 
     jaccard_similarity_count = 0
@@ -173,6 +220,9 @@ def compute_identifier_splitting_score(
 
     raw_jaccard_similarity_count = 0
     raw_jaccard_similarity_sum = 0
+
+    identifier_fertility_count = 0
+    identifier_fertility_sum = 0
 
     identifier_splits = []
 
@@ -190,6 +240,9 @@ def compute_identifier_splitting_score(
             if identifier.range[0] < token.range[1]
             and token.range[1] <= identifier.range[1]
         ]
+
+        identifier_fertility_count += 1
+        identifier_fertility_sum += len(raw_tokenizer_splits)
 
         # Find all the tokens that span the identifier's byte range.
         tokenizer_splits = [
@@ -210,8 +263,7 @@ def compute_identifier_splitting_score(
             .decode("utf-8", errors="ignore")
             .replace("_", "")
             for token in tokens
-            if identifier.range[0] < token.range[1]
-            and token.range[1] <= identifier.range[1]
+            if tokens_overlap(token, identifier)
         ]
 
         tokenizer_splits = list(filter(None, tokenizer_splits))
@@ -245,7 +297,11 @@ def compute_identifier_splitting_score(
     if raw_jaccard_similarity_count != 0:
         raw_jaccard = raw_jaccard_similarity_sum / raw_jaccard_similarity_count
 
-    return jaccard, raw_jaccard, identifier_splits
+    identifier_fertility = 0
+    if identifier_fertility_count != 0:
+        identifier_fertility = identifier_fertility_sum / identifier_fertility_count
+
+    return jaccard, raw_jaccard, identifier_fertility, identifier_splits
 
 
 def collect_identifiers(tree: TSTree, document: Document) -> List[SemanticToken]:
@@ -286,7 +342,7 @@ def collect_semantic_tokens(tree: TSTree, content: bytes) -> List[SemanticToken]
             if prev_end_byte != node.start_byte:
                 semantic_tokens.append(
                     SemanticToken(
-                        range=(prev_end_byte, node.start_byte), type="whitespace"
+                        range=(prev_end_byte, node.start_byte), type="unknown"
                     )
                 )
 
@@ -302,7 +358,7 @@ def collect_semantic_tokens(tree: TSTree, content: bytes) -> List[SemanticToken]
 
     if prev_end_byte < len(content):
         semantic_tokens.append(
-            SemanticToken(range=(prev_end_byte, len(content)), type="whitespace")
+            SemanticToken(range=(prev_end_byte, len(content)), type="unknown")
         )
 
     return semantic_tokens

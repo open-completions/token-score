@@ -1,27 +1,10 @@
 import argparse
-from typing import List
 
 import tiktoken
 from rich.console import Console
 from rich.table import Table
 
-from token_score import Document, Token, compute_token_score
-
-ENC = tiktoken.encoding_for_model("code")
-
-
-def tokenizer(doc: Document) -> List[Token]:
-    ids = ENC.encode_ordinary(doc.content.decode("utf-8", errors="strict"))
-    token_bytes = [ENC.decode_single_token_bytes(id) for id in ids]
-    tokens = []
-
-    offset = 0
-    for b in token_bytes:
-        tokens.append(Token(range=(offset, offset + len(b))))
-        offset += len(b)
-
-    return tokens
-
+from token_score import Document, compute_token_score, tiktoken_tokenizer
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -30,15 +13,14 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     console = Console()
+    enc = tiktoken.encoding_for_model("gpt-4")
 
     doc = Document(lang=args.lang, content=open(args.file, "rb").read())
-
-    tokens = tokenizer(doc)
+    tokens = tiktoken_tokenizer(enc, doc)
 
     result = compute_token_score(doc, tokens)
 
     table = Table(show_header=True, header_style="bold magenta")
-
     table.add_column("Identifier")
     table.add_column("Expected Splits")
     table.add_column("Raw Tokenizer Splits")
@@ -65,15 +47,18 @@ if __name__ == "__main__":
     console.print(table)
 
     table = Table(show_header=True, header_style="bold magenta")
-
     table.add_column("Compression Ratio")
+    table.add_column("Identifier Fertility")
     table.add_column("Raw Identifier Splitting Score")
     table.add_column("Identifier Splitting Score")
+    table.add_column("Token Span Score")
 
     table.add_row(
         str(result.metrics.compression),
+        str(result.metrics.identifier_fertility),
         str(result.metrics.raw_identifier_splitting_score),
         str(result.metrics.identifier_splitting_score),
+        str(result.metrics.token_span_score),
     )
 
     console.print(table)

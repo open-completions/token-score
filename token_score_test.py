@@ -22,25 +22,25 @@ def test_collect_semantic_tokens_go():
         document.content,
     ) == [
         SemanticToken(range=(0, 7), type="package"),
-        SemanticToken(range=(7, 8), type="whitespace"),
+        SemanticToken(range=(7, 8), type="unknown"),
         SemanticToken(range=(8, 19), type="package_identifier"),
         SemanticToken(range=(19, 21), type="\n"),
         SemanticToken(range=(21, 35), type="comment"),
-        SemanticToken(range=(35, 36), type="whitespace"),
+        SemanticToken(range=(35, 36), type="unknown"),
         SemanticToken(range=(36, 40), type="func"),
-        SemanticToken(range=(40, 41), type="whitespace"),
+        SemanticToken(range=(40, 41), type="unknown"),
         SemanticToken(range=(41, 45), type="identifier"),
         SemanticToken(range=(45, 46), type="("),
         SemanticToken(range=(46, 47), type=")"),
-        SemanticToken(range=(47, 48), type="whitespace"),
+        SemanticToken(range=(47, 48), type="unknown"),
         SemanticToken(range=(48, 49), type="{"),
-        SemanticToken(range=(49, 50), type="whitespace"),
+        SemanticToken(range=(49, 50), type="unknown"),
         SemanticToken(range=(50, 51), type="identifier"),
-        SemanticToken(range=(51, 52), type="whitespace"),
+        SemanticToken(range=(51, 52), type="unknown"),
         SemanticToken(range=(52, 54), type=":="),
-        SemanticToken(range=(54, 55), type="whitespace"),
+        SemanticToken(range=(54, 55), type="unknown"),
         SemanticToken(range=(55, 56), type='"'),
-        SemanticToken(range=(56, 67), type="whitespace"),
+        SemanticToken(range=(56, 67), type="unknown"),
         SemanticToken(range=(67, 68), type='"'),
         SemanticToken(range=(68, 69), type="}"),
         SemanticToken(range=(69, 70), type="\n"),
@@ -59,22 +59,22 @@ def test_collect_semantic_tokens_python():
         document.content,
     ) == [
         SemanticToken(range=(0, 13), type="comment"),
-        SemanticToken(range=(13, 14), type="whitespace"),
+        SemanticToken(range=(13, 14), type="unknown"),
         SemanticToken(range=(14, 17), type="def"),
-        SemanticToken(range=(17, 18), type="whitespace"),
+        SemanticToken(range=(17, 18), type="unknown"),
         SemanticToken(range=(18, 22), type="identifier"),
         SemanticToken(range=(22, 23), type="("),
         SemanticToken(range=(23, 24), type=")"),
         SemanticToken(range=(24, 25), type=":"),
-        SemanticToken(range=(25, 27), type="whitespace"),
+        SemanticToken(range=(25, 27), type="unknown"),
         SemanticToken(range=(27, 30), type="identifier"),
-        SemanticToken(range=(30, 31), type="whitespace"),
+        SemanticToken(range=(30, 31), type="unknown"),
         SemanticToken(range=(31, 32), type="="),
-        SemanticToken(range=(32, 33), type="whitespace"),
+        SemanticToken(range=(32, 33), type="unknown"),
         SemanticToken(range=(33, 34), type='"'),
-        SemanticToken(range=(34, 37), type="whitespace"),
+        SemanticToken(range=(34, 37), type="unknown"),
         SemanticToken(range=(37, 38), type='"'),
-        SemanticToken(range=(38, 39), type="whitespace"),
+        SemanticToken(range=(38, 39), type="unknown"),
     ]
 
 
@@ -91,39 +91,39 @@ def test_collect_semantic_tokens_java():
         document.content,
     ) == [
         SemanticToken(range=(0, 7), type="package"),
-        SemanticToken(range=(7, 8), type="whitespace"),  # " "
+        SemanticToken(range=(7, 8), type="unknown"),  # " "
         SemanticToken(range=(8, 19), type="identifier"),
         SemanticToken(range=(19, 20), type=";"),
-        SemanticToken(range=(20, 22), type="whitespace"),  # "\n\n"
+        SemanticToken(range=(20, 22), type="unknown"),  # "\n\n"
         SemanticToken(range=(22, 28), type="public"),
-        SemanticToken(range=(28, 29), type="whitespace"),  # " "
+        SemanticToken(range=(28, 29), type="unknown"),  # " "
         SemanticToken(range=(29, 34), type="class"),
-        SemanticToken(range=(34, 35), type="whitespace"),  # " "
+        SemanticToken(range=(34, 35), type="unknown"),  # " "
         SemanticToken(range=(35, 39), type="identifier"),
-        SemanticToken(range=(39, 40), type="whitespace"),  # " "
+        SemanticToken(range=(39, 40), type="unknown"),  # " "
         SemanticToken(range=(40, 41), type="{"),
-        SemanticToken(range=(41, 43), type="whitespace"),  # "\n\t"
+        SemanticToken(range=(41, 43), type="unknown"),  # "\n\t"
         SemanticToken(range=(43, 49), type="public"),
-        SemanticToken(range=(49, 50), type="whitespace"),  # " "
+        SemanticToken(range=(49, 50), type="unknown"),  # " "
         SemanticToken(range=(50, 56), type="static"),
-        SemanticToken(range=(56, 57), type="whitespace"),  # " "
+        SemanticToken(range=(56, 57), type="unknown"),  # " "
         SemanticToken(range=(57, 61), type="void_type"),
-        SemanticToken(range=(61, 62), type="whitespace"),  # " "
+        SemanticToken(range=(61, 62), type="unknown"),  # " "
         SemanticToken(range=(62, 66), type="identifier"),
         SemanticToken(range=(66, 67), type="("),
         SemanticToken(range=(67, 73), type="type_identifier"),
         SemanticToken(range=(73, 74), type="["),
         SemanticToken(range=(74, 75), type="]"),
-        SemanticToken(range=(75, 76), type="whitespace"),  # " "
+        SemanticToken(range=(75, 76), type="unknown"),  # " "
         SemanticToken(range=(76, 80), type="identifier"),
         SemanticToken(range=(80, 81), type=")"),
-        SemanticToken(range=(81, 82), type="whitespace"),  # " "
+        SemanticToken(range=(81, 82), type="unknown"),  # " "
         SemanticToken(range=(82, 83), type="{"),
-        SemanticToken(range=(83, 85), type="whitespace"),  # "\n\t"
+        SemanticToken(range=(83, 85), type="unknown"),  # "\n\t"
         SemanticToken(range=(85, 86), type="}"),
-        SemanticToken(range=(86, 87), type="whitespace"),  # "\n"
+        SemanticToken(range=(86, 87), type="unknown"),  # "\n"
         SemanticToken(range=(87, 88), type="}"),
-        SemanticToken(range=(88, 89), type="whitespace"),  # "\n"
+        SemanticToken(range=(88, 89), type="unknown"),  # "\n"
     ]
 
 
@@ -140,26 +140,26 @@ def test_collect_semantic_tokens_javascript():
         document.content,
     ) == [
         SemanticToken(range=(0, 8), type="function"),
-        SemanticToken(range=(8, 9), type="whitespace"),
+        SemanticToken(range=(8, 9), type="unknown"),
         SemanticToken(range=(9, 13), type="identifier"),
         SemanticToken(range=(13, 14), type="("),
         SemanticToken(range=(14, 15), type=")"),
-        SemanticToken(range=(15, 16), type="whitespace"),
+        SemanticToken(range=(15, 16), type="unknown"),
         SemanticToken(range=(16, 17), type="{"),
-        SemanticToken(range=(17, 22), type="whitespace"),
+        SemanticToken(range=(17, 22), type="unknown"),
         SemanticToken(range=(22, 36), type="comment"),
-        SemanticToken(range=(36, 41), type="whitespace"),
+        SemanticToken(range=(36, 41), type="unknown"),
         SemanticToken(range=(41, 44), type="let"),
-        SemanticToken(range=(44, 45), type="whitespace"),
+        SemanticToken(range=(44, 45), type="unknown"),
         SemanticToken(range=(45, 46), type="identifier"),
-        SemanticToken(range=(46, 47), type="whitespace"),
+        SemanticToken(range=(46, 47), type="unknown"),
         SemanticToken(range=(47, 48), type="="),
-        SemanticToken(range=(48, 49), type="whitespace"),
+        SemanticToken(range=(48, 49), type="unknown"),
         SemanticToken(range=(49, 51), type="number"),
         SemanticToken(range=(51, 52), type=";"),
-        SemanticToken(range=(52, 53), type="whitespace"),
+        SemanticToken(range=(52, 53), type="unknown"),
         SemanticToken(range=(53, 54), type="}"),
-        SemanticToken(range=(54, 55), type="whitespace"),
+        SemanticToken(range=(54, 55), type="unknown"),
     ]
 
 
@@ -176,35 +176,35 @@ def test_collect_semantic_tokens_cpp():
         document.content,
     ) == [
         SemanticToken(range=(0, 8), type="#include"),
-        SemanticToken(range=(8, 9), type="whitespace"),
+        SemanticToken(range=(8, 9), type="unknown"),
         SemanticToken(range=(9, 19), type="system_lib_string"),
         SemanticToken(range=(19, 21), type="\n"),
         SemanticToken(range=(21, 24), type="primitive_type"),
-        SemanticToken(range=(24, 25), type="whitespace"),
+        SemanticToken(range=(24, 25), type="unknown"),
         SemanticToken(range=(25, 29), type="identifier"),
         SemanticToken(range=(29, 30), type="("),
         SemanticToken(range=(30, 31), type=")"),
-        SemanticToken(range=(31, 32), type="whitespace"),
+        SemanticToken(range=(31, 32), type="unknown"),
         SemanticToken(range=(32, 33), type="{"),
-        SemanticToken(range=(33, 35), type="whitespace"),
+        SemanticToken(range=(33, 35), type="unknown"),
         SemanticToken(range=(35, 38), type="namespace_identifier"),
         SemanticToken(range=(38, 40), type="::"),
         SemanticToken(range=(40, 44), type="identifier"),
-        SemanticToken(range=(44, 45), type="whitespace"),
+        SemanticToken(range=(44, 45), type="unknown"),
         SemanticToken(range=(45, 47), type="<<"),
-        SemanticToken(range=(47, 48), type="whitespace"),
+        SemanticToken(range=(47, 48), type="unknown"),
         SemanticToken(range=(48, 49), type='"'),
-        SemanticToken(range=(49, 61), type="whitespace"),
+        SemanticToken(range=(49, 61), type="unknown"),
         SemanticToken(range=(61, 62), type='"'),
         SemanticToken(range=(62, 63), type=";"),
-        SemanticToken(range=(63, 65), type="whitespace"),
+        SemanticToken(range=(63, 65), type="unknown"),
         SemanticToken(range=(65, 71), type="return"),
-        SemanticToken(range=(71, 72), type="whitespace"),
+        SemanticToken(range=(71, 72), type="unknown"),
         SemanticToken(range=(72, 73), type="number_literal"),
         SemanticToken(range=(73, 74), type=";"),
-        SemanticToken(range=(74, 75), type="whitespace"),
+        SemanticToken(range=(74, 75), type="unknown"),
         SemanticToken(range=(75, 76), type="}"),
-        SemanticToken(range=(76, 77), type="whitespace"),
+        SemanticToken(range=(76, 77), type="unknown"),
     ]
 
 
