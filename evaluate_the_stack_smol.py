@@ -1,4 +1,6 @@
-from typing import Iterator
+import logging
+from multiprocessing import Pool, cpu_count
+from typing import Iterator, List, Tuple, Union
 
 import tiktoken
 from datasets import Dataset, load_dataset
@@ -7,34 +9,111 @@ from tqdm import tqdm
 from token_score import (
     SUPPORTED_LANGUAGES,
     Document,
-    collect_identifiers,
+    TokenScore,
+    TokenScoreMetrics,
+    compute_token_score,
+    tiktoken_tokenizer,
 )
 
 
-def the_stack_to_documents(ds: Dataset) -> Iterator[Document]:
-    for sample in ds:
-        lang = sample["lang"].lower()  # type: ignore
+def the_stack_to_documents(datasets: List[Dataset]) -> Iterator[Document]:
+    for ds in datasets:
+        for sample in ds:
+            lang = sample["lang"].lower()  # type: ignore
 
-        if lang not in SUPPORTED_LANGUAGES:  # type: ignore
-            continue
+            if lang not in SUPPORTED_LANGUAGES:  # type: ignore
+                continue
 
-        yield Document(
-            lang=lang,  # type: ignore
-            content=sample["content"].encode("utf-8", errors="ignore"),  # type: ignore
-        )
+            yield Document(
+                lang=lang,  # type: ignore
+                content=sample["content"].encode("utf-8", errors="ignore"),  # type: ignore
+            )
+
+
+def worker_process(doc: Document) -> Union[None, Tuple[TokenScoreMetrics, str]]:
+    enc = tiktoken.encoding_for_model("gpt-4")
+
+    try:
+        if len(doc.content) > 256 * 1024:
+            logging.warning(f"Skipping because too long: {len(doc.content)} bytes")
+            return None
+
+        tokens = tiktoken_tokenizer(enc, doc)
+        r = compute_token_score(doc, tokens)
+        return r.metrics, doc.lang
+
+    except Exception as e:
+        logging.error(f"Failed to compute token score: {e}")
+        return None
 
 
 if __name__ == "__main__":
-    the_stack_smol: Dataset = load_dataset("bigcode/the-stack-smol", split="train")  # type: ignore
+    the_stack_smol_py: Dataset = load_dataset(
+        "bigcode/the-stack-smol-xs", "python", split="train", trust_remote_code=True
+    )  # type: ignore
+    the_stack_smol_go: Dataset = load_dataset(
+        "bigcode/the-stack-smol-xs", "go", split="train", trust_remote_code=True
+    )  # type: ignore
+    the_stack_smol_java: Dataset = load_dataset(
+        "bigcode/the-stack-smol-xs", "java", split="train", trust_remote_code=True
+    )  # type: ignore
+    the_stack_smol_javascript: Dataset = load_dataset(
+        "bigcode/the-stack-smol-xs", "javascript", split="train", trust_remote_code=True
+    )  # type: ignore
+    the_stack_smol_cpp: Dataset = load_dataset(
+        "bigcode/the-stack-smol-xs", "c++", split="train", trust_remote_code=True
+    )  # type: ignore
 
-    enc = tiktoken.encoding_for_model("gpt-4")
+    score = TokenScore(
+        metrics={
+            lang: TokenScoreMetrics(
+                compression=0,
+                total_bytes=0,
+                total_tokens=0,
+                token_span_score=0,
+                identifier_fertility=0,
+                identifier_splitting_score=0,
+                raw_identifier_splitting_score=0,
+            )
+            for lang in SUPPORTED_LANGUAGES
+        },
+        total_bytes=0,
+        total_tokens=0,
+    )
 
-    for doc in tqdm(the_stack_to_documents(the_stack_smol), total=50000):
-        tree = doc.parse()
+    with Pool(cpu_count()) as pool:
+        tasks = (
+            doc
+            for doc in the_stack_to_documents(
+                [
+                    the_stack_smol_py,
+                    the_stack_smol_go,
+                    the_stack_smol_java,
+                    the_stack_smol_javascript,
+                    the_stack_smol_cpp,
+                ]
+            )
+        )
 
-        # semantic_tokens = collect_semantic_tokens(tree, doc.content)
+        for r in tqdm(pool.imap_unordered(worker_process, tasks), total=500):
+            if r is not None:
+                score.add(r[0], r[1])
 
-        identifiers = collect_identifiers(tree, doc)
+    print(score.model_dump_json())
 
-        # tokens = tiktoken_tokenizer(enc, doc)
-        # result = compute_token_score(doc, tokens)
+    with open("the_stack_smol_metrics.json", "w") as f:
+        f.write(score.model_dump_json())
+
+    # for doc, repo_name, path in tqdm(
+    #     the_stack_to_documents(the_stack_smol), total=50000
+    # ):
+    #     if len(doc.content) > 256 * 1024:
+    #         logging.warning(f"Skipping {repo_name}/{path} because it is too long")
+    #         continue
+
+    #     try:
+    #         tokens = tiktoken_tokenizer(enc, doc)
+    #         r = compute_token_score(doc, tokens)
+    #         m = m.merge(r.metrics)
+    #     except Exception as e:
+    #         logging.error(f"Failed to compute token score for {repo_name}/{path}: {e}")

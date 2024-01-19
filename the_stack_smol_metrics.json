@@ -1,0 +1,51 @@
+{
+  "metrics": {
+    "javascript": {
+      "compression": 3.652605963696381,
+      "identifier_fertility": 2.3626594195067856,
+      "identifier_splitting_score": 0.7253750893221005,
+      "raw_identifier_splitting_score": 0.24854527631773393,
+      "token_span_score": 1.4437278488440068,
+      "total_tokens": 360890,
+      "total_bytes": 1074299
+    },
+    "python": {
+      "compression": 4.1117576844409855,
+      "identifier_fertility": 1.6276535714228537,
+      "identifier_splitting_score": 0.8726505232713824,
+      "raw_identifier_splitting_score": 0.12222836049568309,
+      "token_span_score": 1.4009049338581503,
+      "total_tokens": 246974,
+      "total_bytes": 913302
+    },
+    "c++": {
+      "compression": 3.8688968123545764,
+      "identifier_fertility": 2.1761311132836556,
+      "identifier_splitting_score": 0.8072269260585603,
+      "raw_identifier_splitting_score": 0.2976044143176681,
+      "token_span_score": 1.416321358737866,
+      "total_tokens": 370225,
+      "total_bytes": 1406423
+    },
+    "go": {
+      "compression": 3.1976137951269585,
+      "identifier_fertility": 1.6100895492035208,
+      "identifier_splitting_score": 0.8487434893293723,
+      "raw_identifier_splitting_score": 0.261831833754326,
+      "token_span_score": 1.3586267886085026,
+      "total_tokens": 433748,
+      "total_bytes": 1166660
+    },
+    "java": {
+      "compression": 4.459465854449598,
+      "identifier_fertility": 2.041090298709168,
+      "identifier_splitting_score": 0.7497097981082531,
+      "raw_identifier_splitting_score": 0.17467858280039164,
+      "token_span_score": 1.4995115214870693,
+      "total_tokens": 204889,
+      "total_bytes": 862361
+    }
+  },
+  "total_tokens": 1616726,
+  "total_bytes": 5423045
+}

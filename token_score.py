@@ -92,6 +92,41 @@ class TokenScoreMetrics(BaseModel):
     # The total number of bytes in the dataset.
     total_bytes: int
 
+    def merge(self, other: "TokenScoreMetrics") -> "TokenScoreMetrics":
+        """Merges two set of metrics together taking into account the number of
+        bytes as the weighting measure."""
+        total_bytes = self.total_bytes + other.total_bytes
+
+        return TokenScoreMetrics(
+            compression=(
+                self.compression * self.total_bytes
+                + other.compression * other.total_bytes
+            )
+            / total_bytes,
+            identifier_fertility=(
+                self.identifier_fertility * self.total_bytes
+                + other.identifier_fertility * other.total_bytes
+            )
+            / total_bytes,
+            identifier_splitting_score=(
+                self.identifier_splitting_score * self.total_bytes
+                + other.identifier_splitting_score * other.total_bytes
+            )
+            / total_bytes,
+            raw_identifier_splitting_score=(
+                self.raw_identifier_splitting_score * self.total_bytes
+                + other.raw_identifier_splitting_score * other.total_bytes
+            )
+            / total_bytes,
+            token_span_score=(
+                self.token_span_score * self.total_bytes
+                + other.token_span_score * other.total_bytes
+            )
+            / total_bytes,
+            total_tokens=self.total_tokens + other.total_tokens,
+            total_bytes=total_bytes,
+        )
+
 
 class TokenScore(BaseModel):
     """A structure that holds the result of the evaluation of a tokenization
@@ -105,6 +140,13 @@ class TokenScore(BaseModel):
 
     # The total number of bytes in the dataset.
     total_bytes: int
+
+    def add(self, other: "TokenScoreMetrics", lang: str) -> "TokenScore":
+        """Adds a set of metrics to the token score in place."""
+        self.metrics[lang] = self.metrics[lang].merge(other)
+        self.total_bytes += other.total_bytes
+        self.total_tokens += other.total_tokens
+        return self
 
 
 class IdentifierSplits(BaseModel):
@@ -141,7 +183,9 @@ def compute_token_score(document: Document, tokens: List[Token]) -> TokenScoreRe
 
     semantic_tokens = collect_semantic_tokens(tree, document.content)
 
-    compression = len(document.content) / len(semantic_tokens)
+    compression = 0
+    if len(tokens) != 0:
+        compression = len(document.content) / len(tokens)
 
     (
         identifier_splitting_score,
@@ -150,7 +194,7 @@ def compute_token_score(document: Document, tokens: List[Token]) -> TokenScoreRe
         identifier_splits,
     ) = compute_identifier_splitting_score(document, identifiers, tokens)
 
-    token_span_score = compute_token_span_score(document, semantic_tokens, tokens)
+    token_span_score = compute_token_span_score(semantic_tokens, tokens)
 
     return TokenScoreResult(
         metrics=TokenScoreMetrics(
@@ -159,7 +203,7 @@ def compute_token_score(document: Document, tokens: List[Token]) -> TokenScoreRe
             identifier_splitting_score=identifier_splitting_score,
             raw_identifier_splitting_score=raw_identifier_splitting_score,
             token_span_score=token_span_score,
-            total_tokens=len(semantic_tokens),
+            total_tokens=len(tokens),
             total_bytes=len(document.content),
         ),
         tree=tree,
@@ -176,11 +220,11 @@ def tokens_overlap(a: Token, b: Token) -> bool:
 
 def tiktoken_tokenizer(enc: OAIEncoding, document: Document) -> List[Token]:
     ids = enc.encode_ordinary(document.content.decode("utf-8", errors="strict"))
-    token_bytes = [enc.decode_single_token_bytes(id) for id in ids]
     tokens = []
 
     offset = 0
-    for b in token_bytes:
+    for i in range(len(ids)):
+        b = enc.decode_single_token_bytes(ids[i])
         tokens.append(Token(range=(offset, offset + len(b))))
         offset += len(b)
 
@@ -188,7 +232,7 @@ def tiktoken_tokenizer(enc: OAIEncoding, document: Document) -> List[Token]:
 
 
 def compute_token_span_score(
-    document: Document, semantic_tokens: List[SemanticToken], tokens: List[Token]
+    semantic_tokens: List[SemanticToken], tokens: List[Token]
 ) -> float:
     """Computes the token span score of a document."""
 
