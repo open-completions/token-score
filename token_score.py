@@ -4,11 +4,15 @@ from typing import Dict, List, Set, Tuple
 from pydantic import BaseModel
 from spiral import ronin
 from tiktoken import Encoding as OAIEncoding
+from transformers import BatchEncoding as HFEncoding
+from transformers import PreTrainedTokenizer, PreTrainedTokenizerFast
 from tree_sitter import Language as TSLanguage
 from tree_sitter import Node as TSNode
 from tree_sitter import Parser as TSParser
 from tree_sitter import Tree as TSTree
 from tree_sitter_languages import get_language as ts_get_language
+
+HFTokenizer = PreTrainedTokenizerFast | PreTrainedTokenizer
 
 # The set of languages supported by TokenScore.
 SUPPORTED_LANGUAGES = set(
@@ -203,11 +207,13 @@ def compute_token_score(document: Document, tokens: List[Token]) -> TokenScoreRe
             identifier_splitting_score=identifier_splitting_score,
             raw_identifier_splitting_score=raw_identifier_splitting_score,
             token_span_score=token_span_score,
+            # token_span_score=0,
             total_tokens=len(tokens),
             total_bytes=len(document.content),
         ),
         tree=tree,
         semantic_tokens=semantic_tokens,
+        # semantic_tokens=[],
         identifier_splits=identifier_splits,
         identifiers=identifiers,
     )
@@ -228,6 +234,40 @@ def tiktoken_tokenizer(enc: OAIEncoding, document: Document) -> List[Token]:
         tokens.append(Token(range=(offset, offset + len(b))))
         offset += len(b)
 
+    return tokens
+
+
+def huggingface_tokenizer(tokenizer: HFTokenizer, document: Document) -> List[Token]:
+    decoded_document = document.content.decode("utf-8", errors="strict")
+
+    enc: HFEncoding = tokenizer.encode_plus(
+        decoded_document, return_offsets_mapping=True, add_special_tokens=False
+    )
+
+    byte_offset_mapping = []
+    last_char_offset = None
+
+    for char_start, char_end in enc.offset_mapping:
+        # Decode only the new part of the text to find the byte length
+        if last_char_offset != (char_start, char_end):
+            char_byte_length = len(
+                decoded_document[char_start:char_end].encode("utf-8")
+            )
+            last_char_offset = (char_start, char_end)
+        else:
+            char_byte_length = 0
+
+        if byte_offset_mapping:
+            byte_start = byte_offset_mapping[-1][1]
+        else:
+            byte_start = 0
+
+        byte_end = byte_start + char_byte_length
+
+        byte_offset_mapping.append((byte_start, byte_end))
+
+    # Convert byte_offset_mapping to a list of Token instances
+    tokens = [Token(range=offset) for offset in byte_offset_mapping]
     return tokens
 
 

@@ -1,10 +1,12 @@
 import logging
+import sys
 from multiprocessing import Pool, cpu_count
 from typing import Iterator, List, Tuple, Union
 
 import tiktoken
 from datasets import Dataset, load_dataset
 from tqdm import tqdm
+from transformers import AutoTokenizer
 
 from token_score import (
     SUPPORTED_LANGUAGES,
@@ -12,8 +14,14 @@ from token_score import (
     TokenScore,
     TokenScoreMetrics,
     compute_token_score,
-    tiktoken_tokenizer,
+    huggingface_tokenizer,
 )
+
+HF_TOKENIZER = AutoTokenizer.from_pretrained(
+    "codellama/CodeLlama-7b-hf", trust_remote_code=True
+)
+
+OPENAI_TOKENIZER = tiktoken.encoding_for_model("code-cushman-001")
 
 
 def the_stack_to_documents(datasets: List[Dataset]) -> Iterator[Document]:
@@ -31,14 +39,14 @@ def the_stack_to_documents(datasets: List[Dataset]) -> Iterator[Document]:
 
 
 def worker_process(doc: Document) -> Union[None, Tuple[TokenScoreMetrics, str]]:
-    enc = tiktoken.encoding_for_model("code-cushman-001")
-
     try:
         if len(doc.content) > 256 * 1024:
             logging.warning(f"Skipping because too long: {len(doc.content)} bytes")
             return None
 
-        tokens = tiktoken_tokenizer(enc, doc)
+        # tokens = tiktoken_tokenizer(OPENAI_TOKENIZER, doc)
+        tokens = huggingface_tokenizer(HF_TOKENIZER, doc)
+
         r = compute_token_score(doc, tokens)
         return r.metrics, doc.lang
 
@@ -48,6 +56,10 @@ def worker_process(doc: Document) -> Union[None, Tuple[TokenScoreMetrics, str]]:
 
 
 if __name__ == "__main__":
+    if len(sys.argv) < 2:
+        print("Usage: python evaluate_the_stack.py <outfile>")
+        sys.exit(1)
+
     ds = "bigcode/the-stack-smol-xs"
 
     the_stack_smol_py: Dataset = load_dataset(
@@ -109,5 +121,5 @@ if __name__ == "__main__":
 
     print(score.model_dump_json())
 
-    with open("the_stack_smol_metrics.json", "w") as f:
+    with open(f"{sys.argv[1]}", "w") as f:
         f.write(score.model_dump_json())
