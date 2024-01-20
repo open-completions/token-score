@@ -12,3 +12,4 @@ dependencies:
 channels:
   - conda-forge
 # pip install git+https://github.com/rojas-diego/spiral.git
+# pip install tree_sitter tree_sitter_languages

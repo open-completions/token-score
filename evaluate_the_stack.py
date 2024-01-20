@@ -18,7 +18,7 @@ from token_score import (
 )
 
 HF_TOKENIZER = AutoTokenizer.from_pretrained(
-    "codellama/CodeLlama-7b-hf", trust_remote_code=True
+    "replit/replit-code-v1_5-3b", trust_remote_code=True
 )
 
 OPENAI_TOKENIZER = tiktoken.encoding_for_model("code-cushman-001")
@@ -63,25 +63,25 @@ if __name__ == "__main__":
     ds = "bigcode/the-stack-smol"
 
     the_stack_smol_py: Dataset = load_dataset(
-        ds,
+        ds, "default",
         data_dir="data/python",
         split="train",
         trust_remote_code=True,
     )  # type: ignore
     the_stack_smol_go: Dataset = load_dataset(
-        ds, data_dir="data/go", split="train", trust_remote_code=True
+        ds, "default", data_dir="data/go", split="train", trust_remote_code=True
     )  # type: ignore
     the_stack_smol_java: Dataset = load_dataset(
-        ds, data_dir="data/java", split="train", trust_remote_code=True
+        ds, "default", data_dir="data/java", split="train", trust_remote_code=True
     )  # type: ignore
     the_stack_smol_javascript: Dataset = load_dataset(
-        ds,
+        ds, "default",
         data_dir="data/javascript",
         split="train",
         trust_remote_code=True,
     )  # type: ignore
     the_stack_smol_cpp: Dataset = load_dataset(
-        ds, data_dir="data/c++", split="train", trust_remote_code=True
+        ds, "default", data_dir="data/c++", split="train", trust_remote_code=True
     )  # type: ignore
 
     score = TokenScore(
