@@ -31,7 +31,7 @@ def the_stack_to_documents(datasets: List[Dataset]) -> Iterator[Document]:
 
 
 def worker_process(doc: Document) -> Union[None, Tuple[TokenScoreMetrics, str]]:
-    enc = tiktoken.encoding_for_model("gpt-4")
+    enc = tiktoken.encoding_for_model("code-cushman-001")
 
     try:
         if len(doc.content) > 256 * 1024:
@@ -48,28 +48,28 @@ def worker_process(doc: Document) -> Union[None, Tuple[TokenScoreMetrics, str]]:
 
 
 if __name__ == "__main__":
-    ds = "bigcode/the-stack-smol"
+    ds = "bigcode/the-stack-smol-xs"
 
     the_stack_smol_py: Dataset = load_dataset(
         ds,
-        data_dir="data/python",
+        "python",
         split="train",
         trust_remote_code=True,
     )  # type: ignore
     the_stack_smol_go: Dataset = load_dataset(
-        ds, data_dir="data/go", split="train", trust_remote_code=True
+        ds, "go", split="train", trust_remote_code=True
     )  # type: ignore
     the_stack_smol_java: Dataset = load_dataset(
-        ds, data_dir="data/java", split="train", trust_remote_code=True
+        ds, "java", split="train", trust_remote_code=True
     )  # type: ignore
     the_stack_smol_javascript: Dataset = load_dataset(
         ds,
-        data_dir="data/javascript",
+        "javascript",
         split="train",
         trust_remote_code=True,
     )  # type: ignore
     the_stack_smol_cpp: Dataset = load_dataset(
-        ds, data_dir="data/c++", split="train", trust_remote_code=True
+        ds, "c++", split="train", trust_remote_code=True
     )  # type: ignore
 
     score = TokenScore(
@@ -103,7 +103,7 @@ if __name__ == "__main__":
             )
         )
 
-        for r in tqdm(pool.imap_unordered(worker_process, tasks), total=50000):
+        for r in tqdm(pool.imap_unordered(worker_process, tasks), total=500):
             if r is not None:
                 score.add(r[0], r[1])
 
