@@ -48,20 +48,28 @@ def worker_process(doc: Document) -> Union[None, Tuple[TokenScoreMetrics, str]]:
 
 
 if __name__ == "__main__":
+    ds = "bigcode/the-stack-smol"
+
     the_stack_smol_py: Dataset = load_dataset(
-        "bigcode/the-stack-smol-xs", "python", split="train", trust_remote_code=True
+        ds,
+        data_dir="data/python",
+        split="train",
+        trust_remote_code=True,
     )  # type: ignore
     the_stack_smol_go: Dataset = load_dataset(
-        "bigcode/the-stack-smol-xs", "go", split="train", trust_remote_code=True
+        ds, data_dir="data/go", split="train", trust_remote_code=True
     )  # type: ignore
     the_stack_smol_java: Dataset = load_dataset(
-        "bigcode/the-stack-smol-xs", "java", split="train", trust_remote_code=True
+        ds, data_dir="data/java", split="train", trust_remote_code=True
     )  # type: ignore
     the_stack_smol_javascript: Dataset = load_dataset(
-        "bigcode/the-stack-smol-xs", "javascript", split="train", trust_remote_code=True
+        ds,
+        data_dir="data/javascript",
+        split="train",
+        trust_remote_code=True,
     )  # type: ignore
     the_stack_smol_cpp: Dataset = load_dataset(
-        "bigcode/the-stack-smol-xs", "c++", split="train", trust_remote_code=True
+        ds, data_dir="data/c++", split="train", trust_remote_code=True
     )  # type: ignore
 
     score = TokenScore(
@@ -95,7 +103,7 @@ if __name__ == "__main__":
             )
         )
 
-        for r in tqdm(pool.imap_unordered(worker_process, tasks), total=500):
+        for r in tqdm(pool.imap_unordered(worker_process, tasks), total=50000):
             if r is not None:
                 score.add(r[0], r[1])
 
@@ -103,17 +111,3 @@ if __name__ == "__main__":
 
     with open("the_stack_smol_metrics.json", "w") as f:
         f.write(score.model_dump_json())
-
-    # for doc, repo_name, path in tqdm(
-    #     the_stack_to_documents(the_stack_smol), total=50000
-    # ):
-    #     if len(doc.content) > 256 * 1024:
-    #         logging.warning(f"Skipping {repo_name}/{path} because it is too long")
-    #         continue
-
-    #     try:
-    #         tokens = tiktoken_tokenizer(enc, doc)
-    #         r = compute_token_score(doc, tokens)
-    #         m = m.merge(r.metrics)
-    #     except Exception as e:
-    #         logging.error(f"Failed to compute token score for {repo_name}/{path}: {e}")
