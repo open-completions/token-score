@@ -60,29 +60,13 @@ if __name__ == "__main__":
         print("Usage: python evaluate_the_stack.py <outfile>")
         sys.exit(1)
 
-    ds = "bigcode/the-stack-smol"
-
-    the_stack_smol_py: Dataset = load_dataset(
-        ds, "default",
-        data_dir="data/python",
-        split="train",
-        trust_remote_code=True,
-    )  # type: ignore
-    the_stack_smol_go: Dataset = load_dataset(
-        ds, "default", data_dir="data/go", split="train", trust_remote_code=True
-    )  # type: ignore
-    the_stack_smol_java: Dataset = load_dataset(
-        ds, "default", data_dir="data/java", split="train", trust_remote_code=True
-    )  # type: ignore
-    the_stack_smol_javascript: Dataset = load_dataset(
-        ds, "default",
-        data_dir="data/javascript",
-        split="train",
-        trust_remote_code=True,
-    )  # type: ignore
-    the_stack_smol_cpp: Dataset = load_dataset(
-        ds, "default", data_dir="data/c++", split="train", trust_remote_code=True
-    )  # type: ignore
+    the_stack_smol, total = (
+        [
+            load_dataset("bigcode/the-stack-smol-xs", lang, split="train")
+            for lang in SUPPORTED_LANGUAGES
+        ],
+        500,
+    )
 
     score = TokenScore(
         metrics={
@@ -102,20 +86,9 @@ if __name__ == "__main__":
     )
 
     with Pool(cpu_count()) as pool:
-        tasks = (
-            doc
-            for doc in the_stack_to_documents(
-                [
-                    the_stack_smol_py,
-                    the_stack_smol_go,
-                    the_stack_smol_java,
-                    the_stack_smol_javascript,
-                    the_stack_smol_cpp,
-                ]
-            )
-        )
+        tasks = (doc for doc in the_stack_to_documents(the_stack_smol))  # type: ignore
 
-        for r in tqdm(pool.imap_unordered(worker_process, tasks), total=50000):
+        for r in tqdm(pool.imap_unordered(worker_process, tasks), total=total):
             if r is not None:
                 score.add(r[0], r[1])
 
