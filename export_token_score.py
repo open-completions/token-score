@@ -53,3 +53,12 @@ if __name__ == "__main__":
                 "identifier_splitting_score": identifier_splitting_score,
                 "identifier_fertility": identifier_fertility
             }, o)
+
+        print(f"-------- {lang} {args.model} {args.dataset} --------")
+        for metric_display_name, value in [
+            ("Compression", compression),
+            ("Identifier Splitting Score", identifier_splitting_score),
+            ("Identifier Fertility", identifier_fertility),
+            ("Token Span Score", token_span_score),
+        ]:
+            print(f"{metric_display_name}: {round(value, ndigits=2)}")
