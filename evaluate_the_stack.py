@@ -18,7 +18,7 @@ from token_score import (
 )
 
 HF_TOKENIZER = AutoTokenizer.from_pretrained(
-    "replit/replit-code-v1_5-3b", trust_remote_code=True
+    "stabilityai/stable-code-3b", trust_remote_code=True
 )
 
 OPENAI_TOKENIZER = tiktoken.encoding_for_model("code-cushman-001")

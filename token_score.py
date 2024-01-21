@@ -185,7 +185,7 @@ def compute_token_score(document: Document, tokens: List[Token]) -> TokenScoreRe
 
     identifiers = collect_identifiers(tree, document)
 
-    # semantic_tokens = collect_semantic_tokens(tree, document.content)
+    semantic_tokens = collect_semantic_tokens(tree, document.content)
 
     compression = 0
     if len(tokens) != 0:
@@ -198,7 +198,7 @@ def compute_token_score(document: Document, tokens: List[Token]) -> TokenScoreRe
         identifier_splits,
     ) = compute_identifier_splitting_score(document, identifiers, tokens)
 
-    # token_span_score = compute_token_span_score(semantic_tokens, tokens)
+    token_span_score = compute_token_span_score(semantic_tokens, tokens)
 
     return TokenScoreResult(
         metrics=TokenScoreMetrics(
@@ -206,14 +206,14 @@ def compute_token_score(document: Document, tokens: List[Token]) -> TokenScoreRe
             identifier_fertility=identifier_fertility,
             identifier_splitting_score=identifier_splitting_score,
             raw_identifier_splitting_score=raw_identifier_splitting_score,
-            # token_span_score=token_span_score,
-            token_span_score=0,
+            token_span_score=token_span_score,
+            # token_span_score=0,
             total_tokens=len(tokens),
             total_bytes=len(document.content),
         ),
         tree=tree,
-        # semantic_tokens=semantic_tokens,
-        semantic_tokens=[],
+        semantic_tokens=semantic_tokens,
+        # semantic_tokens=[],
         identifier_splits=identifier_splits,
         identifiers=identifiers,
     )
