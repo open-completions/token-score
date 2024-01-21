@@ -1,10 +1,10 @@
 import argparse
 
-import tiktoken
+from transformers import AutoTokenizer
 from rich.console import Console
 from rich.table import Table
 
-from token_score import Document, compute_token_score, tiktoken_tokenizer
+from token_score import Document, compute_token_score, huggingface_tokenizer, tiktoken_tokenizer
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -13,10 +13,11 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     console = Console()
-    enc = tiktoken.encoding_for_model("gpt-4")
-
     doc = Document(lang=args.lang, content=open(args.file, "rb").read())
-    tokens = tiktoken_tokenizer(enc, doc)
+
+    # enc = tiktoken.encoding_for_model("gpt-4")
+    enc = AutoTokenizer.from_pretrained("codellama/CodeLLaMa-7b-hf")
+    tokens = huggingface_tokenizer(enc, doc)
 
     result = compute_token_score(doc, tokens)
 

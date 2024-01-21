@@ -1,25 +1,29 @@
 import json
+import pandas as pd
+import seaborn as sns
+import matplotlib.pyplot as plt
+import numpy as np
 
-import tiktoken
+# Load the data from the JSON file
+with open('results/token-frequencies.json', 'r') as file:
+    data = json.load(file)
 
-with open("token_frequencies.json") as f:
-    r = json.load(f)
+# Process each tokenizer
+for tokenizer, frequencies in data.items():
+    # Convert to DataFrame
+    df = pd.DataFrame(list(frequencies.items()), columns=['Token ID', 'Frequency'])
 
-for (name, d) in r.items():
-    if len(d) == 0:
-        continue
+    # Create ~30 equal-sized buckets based on frequency
+    df['Bucket'] = pd.qcut(df['Frequency'], q=100, duplicates='drop')
 
-    enc = tiktoken.encoding_for_model(name)
+    # Calculate average frequency per bucket
+    bucket_avg = df.groupby('Bucket')['Frequency'].mean().sort_index(ascending=False)
 
-    total_tokens = sum(d.values())
-    print(f"{name}: {total_tokens} tokens")
-    print(f"{name}: {len(d)} unique tokens")
-    print(f"{name}: {total_tokens / len(d)} average occurrences per token")
-    print(f"{name}: {sum(1 for v in d.values() if v == 1)} tokens that only occur once")
-    print(f"{name}: {sum(1 for v in d.values() if v == 2)} tokens that only occur twice")
-    print(f"{name}: {sum(1 for v in d.values() if v == 3)} tokens that only occur thrice")
-    print(f"{name}: {sum(1 for v in d.values() if v == 4)} tokens that only occur four times")
-
-    # Example tokens that occur only once:
-    print(f"{name}: {[enc.decode_single_token_bytes(int(d)) for d in sorted(d, key=lambda k: d[k])[:10]]}")
-
+    # Plotting
+    sns.barplot(x=bucket_avg.index, y=bucket_avg.values)
+    plt.xticks([])  # Disable x-axis labels
+    plt.yscale('log')  # Set y-axis to logarithmic scale
+    plt.xlabel('Frequency Buckets')
+    plt.ylabel('Average Frequency (Log Scale)')
+    plt.title(f'Token Frequency Distribution for {tokenizer} (Log Scale)')
+    plt.show()

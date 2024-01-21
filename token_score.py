@@ -90,67 +90,11 @@ class TokenScoreMetrics(BaseModel):
     # Example: "if None: return" -> ["if", " ", "None", ":", " ", "return"]
     token_span_score: float
 
-    # The total number of tokens in the dataset.
+    # The total number of tokens in the file.
     total_tokens: int
 
-    # The total number of bytes in the dataset.
+    # The total number of bytes in the file.
     total_bytes: int
-
-    def merge(self, other: "TokenScoreMetrics") -> "TokenScoreMetrics":
-        """Merges two set of metrics together taking into account the number of
-        bytes as the weighting measure."""
-        total_bytes = self.total_bytes + other.total_bytes
-
-        return TokenScoreMetrics(
-            compression=(
-                self.compression * self.total_bytes
-                + other.compression * other.total_bytes
-            )
-            / total_bytes,
-            identifier_fertility=(
-                self.identifier_fertility * self.total_bytes
-                + other.identifier_fertility * other.total_bytes
-            )
-            / total_bytes,
-            identifier_splitting_score=(
-                self.identifier_splitting_score * self.total_bytes
-                + other.identifier_splitting_score * other.total_bytes
-            )
-            / total_bytes,
-            raw_identifier_splitting_score=(
-                self.raw_identifier_splitting_score * self.total_bytes
-                + other.raw_identifier_splitting_score * other.total_bytes
-            )
-            / total_bytes,
-            token_span_score=(
-                self.token_span_score * self.total_bytes
-                + other.token_span_score * other.total_bytes
-            )
-            / total_bytes,
-            total_tokens=self.total_tokens + other.total_tokens,
-            total_bytes=total_bytes,
-        )
-
-
-class TokenScore(BaseModel):
-    """A structure that holds the result of the evaluation of a tokenization
-    pipeline."""
-
-    # The metrics for each programming language.
-    metrics: Dict[str, TokenScoreMetrics]
-
-    # The total number of tokens in the dataset.
-    total_tokens: int
-
-    # The total number of bytes in the dataset.
-    total_bytes: int
-
-    def add(self, other: "TokenScoreMetrics", lang: str) -> "TokenScore":
-        """Adds a set of metrics to the token score in place."""
-        self.metrics[lang] = self.metrics[lang].merge(other)
-        self.total_bytes += other.total_bytes
-        self.total_tokens += other.total_tokens
-        return self
 
 
 class IdentifierSplits(BaseModel):
@@ -178,14 +122,16 @@ class TokenScoreResult:
     metrics: TokenScoreMetrics
 
 
-def compute_token_score(document: Document, tokens: List[Token]) -> TokenScoreResult:
+def compute_token_score(document: Document, tokens: List[Token], return_token_span_score: bool = True) -> TokenScoreResult:
     """Computes the token score of document."""
 
     tree = document.parse()
 
     identifiers = collect_identifiers(tree, document)
 
-    semantic_tokens = collect_semantic_tokens(tree, document.content)
+    semantic_tokens = []
+    if return_token_span_score:
+        semantic_tokens = collect_semantic_tokens(tree, document.content)
 
     compression = 0
     if len(tokens) != 0:
@@ -198,7 +144,9 @@ def compute_token_score(document: Document, tokens: List[Token]) -> TokenScoreRe
         identifier_splits,
     ) = compute_identifier_splitting_score(document, identifiers, tokens)
 
-    token_span_score = compute_token_span_score(semantic_tokens, tokens)
+    token_span_score = 0
+    if return_token_span_score:
+        token_span_score = compute_token_span_score(semantic_tokens, tokens)
 
     return TokenScoreResult(
         metrics=TokenScoreMetrics(
@@ -207,13 +155,11 @@ def compute_token_score(document: Document, tokens: List[Token]) -> TokenScoreRe
             identifier_splitting_score=identifier_splitting_score,
             raw_identifier_splitting_score=raw_identifier_splitting_score,
             token_span_score=token_span_score,
-            # token_span_score=0,
             total_tokens=len(tokens),
             total_bytes=len(document.content),
         ),
         tree=tree,
         semantic_tokens=semantic_tokens,
-        # semantic_tokens=[],
         identifier_splits=identifier_splits,
         identifiers=identifiers,
     )
@@ -241,15 +187,18 @@ def huggingface_tokenizer(tokenizer: HFTokenizer, document: Document) -> List[To
     decoded_document = document.content.decode("utf-8", errors="strict")
 
     enc: HFEncoding = tokenizer.encode_plus(
-        decoded_document, return_offsets_mapping=True, add_special_tokens=False
+        decoded_document, return_offsets_mapping=True, add_special_tokens=False, truncation="do_not_truncate",
     )
 
     byte_offset_mapping = []
     last_char_offset = None
 
+    assert len(enc.offset_mapping) == len(enc.input_ids), f"len offset mapping {len(enc.offset_mapping)} != len input_ids {len(enc.input_ids)}"
+
     for char_start, char_end in enc.offset_mapping:
         # Decode only the new part of the text to find the byte length
         if last_char_offset != (char_start, char_end):
+            char_start = last_char_offset[1] if last_char_offset else 0
             char_byte_length = len(
                 decoded_document[char_start:char_end].encode("utf-8")
             )
@@ -268,6 +217,10 @@ def huggingface_tokenizer(tokenizer: HFTokenizer, document: Document) -> List[To
 
     # Convert byte_offset_mapping to a list of Token instances
     tokens = [Token(range=offset) for offset in byte_offset_mapping]
+
+    assert len(tokens) == len(enc.input_ids), f"len tokens {len(tokens)} != len input_ids {len(enc.input_ids)}"
+    assert tokens[-1].range[1] == len(document.content), f"last token {tokens[-1].range[1]} end != len document {len(document.content)}"
+
     return tokens
 
 
