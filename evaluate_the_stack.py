@@ -2,7 +2,7 @@ import logging
 import os
 import sys
 from multiprocessing import Pool, cpu_count
-from typing import Iterator, List, Optional, Tuple, Union
+from typing import Iterator, List, Optional, Tuple
 
 import tiktoken
 from datasets import Dataset, load_dataset
@@ -18,7 +18,6 @@ from token_score import (
     tiktoken_tokenizer,
 )
 
-
 if len(sys.argv) < 4:
     print("Usage: python evaluate_the_stack.py <lib> <model> <dataset> <outdir>")
     sys.exit(1)
@@ -33,7 +32,11 @@ assert dataset in ["bigcode/the-stack-smol", "bigcode/the-stack-smol-xs"]
 
 is_full_run = dataset == "bigcode/the-stack-smol"
 
-tokenizer = AutoTokenizer.from_pretrained(model, trust_remote_code=True) if lib == "hf" else tiktoken.encoding_for_model(model)
+tokenizer = (
+    AutoTokenizer.from_pretrained(model, trust_remote_code=True)
+    if lib == "hf"
+    else tiktoken.encoding_for_model(model)
+)
 
 
 def the_stack_to_documents(datasets: List[Dataset]) -> Iterator[Document]:
@@ -47,19 +50,29 @@ def the_stack_to_documents(datasets: List[Dataset]) -> Iterator[Document]:
             )
 
 
-def worker_process(doc: Document) -> Tuple[Optional[TokenScoreMetrics], Optional[str], Optional[Exception]]:
+def worker_process(
+    doc: Document,
+) -> Tuple[Optional[TokenScoreMetrics], Optional[str], Optional[Exception]]:
     try:
-        tokens = tiktoken_tokenizer(tokenizer, doc) if lib == "tiktoken" else huggingface_tokenizer(tokenizer, doc) # type: ignore
-        r = compute_token_score(doc, tokens, return_token_span_score=not is_full_run)
-        return r.metrics, doc.lang, None
+        tokens = (
+            tiktoken_tokenizer(tokenizer, doc)  # type: ignore
+            if lib == "tiktoken"
+            else huggingface_tokenizer(tokenizer, doc)  # type: ignore
+        )
+        score = compute_token_score(
+            doc, tokens, return_token_span_score=not is_full_run
+        )
+        return score.metrics, doc.lang, None
 
     except Exception as e:
-        logging.error(f"Failed to compute token score: {e}")
+        logging.error(f"Failed to compute token score: {e.__class__.__name__} {e}")
         return None, None, e
 
 
 if __name__ == "__main__":
-    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
+    logging.basicConfig(
+        level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s"
+    )
 
     logging.info(f"Computing token score for {lib}/{model} over {dataset}")
 
@@ -67,30 +80,34 @@ if __name__ == "__main__":
         logging.info("Omitting token span score for full run")
 
     the_stack_smol = (
-        [
-            load_dataset(dataset, data_dir=f"data/{lang}", split="train")
-            for lang in SUPPORTED_LANGUAGES
-        ]
-    ) if is_full_run else (
-        [
-            load_dataset(dataset, lang, split="train", trust_remote_code=True)
-            for lang in SUPPORTED_LANGUAGES
-        ]
+        (
+            [
+                load_dataset(dataset, data_dir=f"data/{lang}", split="train")
+                for lang in SUPPORTED_LANGUAGES
+            ]
+        )
+        if is_full_run
+        else (
+            [
+                load_dataset(dataset, lang, split="train", trust_remote_code=True)
+                for lang in SUPPORTED_LANGUAGES
+            ]
+        )
     )
 
-    total = sum([len(ds) for ds in the_stack_smol]) # type: ignore
+    total = sum([len(ds) for ds in the_stack_smol])  # type: ignore
 
     logging.info(f"Computing token score for {total} documents")
 
     def outfile_for_lang(lang: str) -> str:
         return f"{outdir}/{lang}/{lib}-{model.replace("/", "-")}/{dataset.replace("/", "-")}.csv"
 
+    [
+        os.makedirs(os.path.dirname(outfile_for_lang(lang)), exist_ok=True)
+        for lang in SUPPORTED_LANGUAGES
+    ]
 
-    [os.makedirs(os.path.dirname(outfile_for_lang(lang)), exist_ok=True) for lang in SUPPORTED_LANGUAGES]
-
-    files = {
-        lang: open(outfile_for_lang(lang), "a") for lang in SUPPORTED_LANGUAGES
-    }
+    files = {lang: open(outfile_for_lang(lang), "a") for lang in SUPPORTED_LANGUAGES}
 
     for file in files.values():
         file.write(
@@ -98,9 +115,9 @@ if __name__ == "__main__":
         )
 
     with Pool(cpu_count()) as pool:
-        tasks = (doc for doc in the_stack_to_documents(the_stack_smol)) # type: ignore
+        tasks = (doc for doc in the_stack_to_documents(the_stack_smol))  # type: ignore
 
-        for (m, lang, e) in tqdm(pool.imap_unordered(worker_process, tasks), total=total):
+        for m, lang, e in tqdm(pool.imap_unordered(worker_process, tasks), total=total):
             if e is not None:
                 logging.error(f"Failed to compute token score: {e}")
                 continue

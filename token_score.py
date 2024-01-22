@@ -1,3 +1,5 @@
+import functools
+import signal
 from dataclasses import dataclass
 from typing import Dict, List, Set, Tuple
 
@@ -108,7 +110,7 @@ class IdentifierSplits(BaseModel):
 
 
 @dataclass
-class TokenScoreResult:
+class TokenScore:
     """All the artefacts produced when computing token score."""
 
     tree: TSTree
@@ -122,7 +124,31 @@ class TokenScoreResult:
     metrics: TokenScoreMetrics
 
 
-def compute_token_score(document: Document, tokens: List[Token], return_token_span_score: bool = True) -> TokenScoreResult:
+def timeout(seconds=5):
+    """A decorator that raises a TimeoutError if the decorated function takes
+    longer than `seconds` to run."""
+
+    def decorator(func):
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs):
+            def handle_timeout(signum, frame):
+                raise TimeoutError()
+
+            signal.signal(signal.SIGALRM, handle_timeout)
+            signal.alarm(seconds)
+            result = func(*args, **kwargs)
+            signal.alarm(0)
+            return result
+
+        return wrapper
+
+    return decorator
+
+
+@timeout(10)
+def compute_token_score(
+    document: Document, tokens: List[Token], return_token_span_score: bool = True
+) -> TokenScore:
     """Computes the token score of document."""
 
     tree = document.parse()
@@ -148,7 +174,7 @@ def compute_token_score(document: Document, tokens: List[Token], return_token_sp
     if return_token_span_score:
         token_span_score = compute_token_span_score(semantic_tokens, tokens)
 
-    return TokenScoreResult(
+    return TokenScore(
         metrics=TokenScoreMetrics(
             compression=compression,
             identifier_fertility=identifier_fertility,
@@ -187,13 +213,18 @@ def huggingface_tokenizer(tokenizer: HFTokenizer, document: Document) -> List[To
     decoded_document = document.content.decode("utf-8", errors="strict")
 
     enc: HFEncoding = tokenizer.encode_plus(
-        decoded_document, return_offsets_mapping=True, add_special_tokens=False, truncation="do_not_truncate",
+        decoded_document,
+        return_offsets_mapping=True,
+        add_special_tokens=False,
+        truncation="do_not_truncate",
     )
 
     byte_offset_mapping = []
     last_char_offset = None
 
-    assert len(enc.offset_mapping) == len(enc.input_ids), f"len offset mapping {len(enc.offset_mapping)} != len input_ids {len(enc.input_ids)}"
+    assert (
+        len(enc.offset_mapping) == len(enc.input_ids)
+    ), f"len offset mapping {len(enc.offset_mapping)} != len input_ids {len(enc.input_ids)}"
 
     for char_start, char_end in enc.offset_mapping:
         # Decode only the new part of the text to find the byte length
@@ -218,8 +249,12 @@ def huggingface_tokenizer(tokenizer: HFTokenizer, document: Document) -> List[To
     # Convert byte_offset_mapping to a list of Token instances
     tokens = [Token(range=offset) for offset in byte_offset_mapping]
 
-    assert len(tokens) == len(enc.input_ids), f"len tokens {len(tokens)} != len input_ids {len(enc.input_ids)}"
-    assert tokens[-1].range[1] == len(document.content), f"last token {tokens[-1].range[1]} end != len document {len(document.content)}"
+    assert len(tokens) == len(
+        enc.input_ids
+    ), f"len tokens {len(tokens)} != len input_ids {len(enc.input_ids)}"
+    assert tokens[-1].range[1] == len(
+        document.content
+    ), f"last token {tokens[-1].range[1]} end != len document {len(document.content)}"
 
     return tokens
 
