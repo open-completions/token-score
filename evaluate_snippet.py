@@ -1,10 +1,10 @@
 import argparse
 
-from transformers import AutoTokenizer
 from rich.console import Console
 from rich.table import Table
+from transformers import AutoTokenizer
 
-from token_score import Document, compute_token_score, huggingface_tokenizer, tiktoken_tokenizer
+from token_score import Document, compute_token_score, huggingface_tokenizer
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -55,11 +55,11 @@ if __name__ == "__main__":
     table.add_column("Token Span Score")
 
     table.add_row(
-        str(result.metrics.compression),
-        str(result.metrics.identifier_fertility),
-        str(result.metrics.raw_identifier_splitting_score),
-        str(result.metrics.identifier_splitting_score),
-        str(result.metrics.token_span_score),
+        str(round(result.metrics.compression, 2)),
+        str(round(result.metrics.identifier_fertility, 2)),
+        str(round(result.metrics.raw_identifier_splitting_score, 2)),
+        str(round(result.metrics.identifier_splitting_score, 2)),
+        str(round(result.metrics.token_span_score, 2)),
     )
 
     console.print(table)
