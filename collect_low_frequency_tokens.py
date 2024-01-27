@@ -1,6 +1,8 @@
 import json
-from transformers import AutoTokenizer
+import logging
+
 from tiktoken import encoding_for_model
+from transformers import AutoTokenizer
 
 HF_TOKENIZER_NAMES = [
     "replit/replit-code-v1_5-3b",
@@ -9,9 +11,8 @@ HF_TOKENIZER_NAMES = [
 ]
 
 HF_TOKENIZERS = {
-    model_name: AutoTokenizer.from_pretrained(
-        model_name, trust_remote_code=True
-    ) for model_name in HF_TOKENIZER_NAMES
+    model_name: AutoTokenizer.from_pretrained(model_name, trust_remote_code=True)
+    for model_name in HF_TOKENIZER_NAMES
 }
 
 OPENAI_TOKENIZER_NAMES = [
@@ -25,16 +26,18 @@ OPENAI_TOKENIZERS = {
 
 
 # Step 1: Load the data
-with open('results/token-frequencies.json', 'r') as file:
+with open("results/token-frequencies-zero-occurence.json", "r") as file:
     data = json.load(file)
 
 # Sort the token frequencies in descending order
 for tokenizer_name, frequencies in data.items():
-    data[tokenizer_name] = {k: v for k, v in sorted(frequencies.items(), key=lambda item: item[1], reverse=True)}
+    data[tokenizer_name] = {
+        k: v
+        for k, v in sorted(frequencies.items(), key=lambda item: item[1], reverse=True)
+    }
 
 r = {}
 
-# Print the top 10 most and least frequent tokens for each tokenizer
 for tokenizer_name, frequencies in data.items():
     r[tokenizer_name] = []
 
@@ -48,7 +51,11 @@ for tokenizer_name, frequencies in data.items():
             token_str = HF_TOKENIZERS[tokenizer_name]._convert_id_to_token(int(id))
 
         if tokenizer_name in OPENAI_TOKENIZERS:
-            token_str = OPENAI_TOKENIZERS[tokenizer_name].decode_single_token_bytes(int(id)).decode('utf-8', errors='ignore')
+            token_str = (
+                OPENAI_TOKENIZERS[tokenizer_name]
+                .decode_single_token_bytes(int(id))
+                .decode("utf-8", errors="ignore")
+            )
 
         lowest_freq.append((token_str, frequency))
 
@@ -59,12 +66,20 @@ for tokenizer_name, frequencies in data.items():
             token_str = HF_TOKENIZERS[tokenizer_name]._convert_id_to_token(int(id))
 
         if tokenizer_name in OPENAI_TOKENIZERS:
-            token_str = OPENAI_TOKENIZERS[tokenizer_name].decode_single_token_bytes(int(id)).decode('utf-8', errors='ignore')
+            try:
+                token_str = (
+                    OPENAI_TOKENIZERS[tokenizer_name]
+                    .decode_single_token_bytes(int(id))
+                    .decode("utf-8", errors="ignore")
+                )
+            except Exception:
+                logging.error(f"Failed to decode token {id} for {tokenizer_name}")
+                token_str = "UNK"
 
         highest_freq.append((token_str, frequency))
 
     r[tokenizer_name] = highest_freq + lowest_freq
 
 
-with open('results/token-frequencies-top.json', 'w') as file:
+with open("results/token-frequencies-top.json", "w") as file:
     json.dump(r, file, indent=2)
