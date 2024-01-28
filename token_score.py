@@ -34,11 +34,11 @@ class Token(BaseModel):
     range: Tuple[int, int]
 
 
-class SemanticToken(Token):
-    """A structure that holds a semantic token and its byte range over the
+class SyntaxToken(Token):
+    """A structure that holds a syntax token and its byte range over the
     document's content."""
 
-    # The token's semantic type.
+    # The token's syntax type.
     type: str
 
 
@@ -86,7 +86,7 @@ class TokenScoreMetrics(BaseModel):
 
     # A measure of the tokenizer's ability to split the source code sequence
     # at canonical boundaries according to the language's grammar. It is
-    # computed by looking at the average number of semantic tokens that a single
+    # computed by looking at the average number of syntax tokens that a single
     # token spans.
     #
     # Example: "if None: return" -> ["if", " ", "None", ":", " ", "return"]
@@ -100,7 +100,7 @@ class TokenScoreMetrics(BaseModel):
 
 
 class IdentifierSplits(BaseModel):
-    identifier: SemanticToken
+    identifier: SyntaxToken
 
     raw_tokenizer_splits: List[str]
 
@@ -115,11 +115,11 @@ class TokenScore:
 
     tree: TSTree
 
-    identifiers: List[SemanticToken]
+    identifiers: List[SyntaxToken]
 
     identifier_splits: List[IdentifierSplits]
 
-    semantic_tokens: List[SemanticToken]
+    syntax_tokens: List[SyntaxToken]
 
     metrics: TokenScoreMetrics
 
@@ -155,9 +155,9 @@ def compute_token_score(
 
     identifiers = collect_identifiers(tree, document)
 
-    semantic_tokens = []
+    syntax_tokens = []
     if return_token_span_score:
-        semantic_tokens = collect_semantic_tokens(tree, document.content)
+        syntax_tokens = collect_syntax_tokens(tree, document.content)
 
     compression = 0
     if len(tokens) != 0:
@@ -172,7 +172,7 @@ def compute_token_score(
 
     token_span_score = 0
     if return_token_span_score:
-        token_span_score = compute_token_span_score(semantic_tokens, tokens)
+        token_span_score = compute_token_span_score(syntax_tokens, tokens)
 
     return TokenScore(
         metrics=TokenScoreMetrics(
@@ -185,7 +185,7 @@ def compute_token_score(
             total_bytes=len(document.content),
         ),
         tree=tree,
-        semantic_tokens=semantic_tokens,
+        syntax_tokens=syntax_tokens,
         identifier_splits=identifier_splits,
         identifiers=identifiers,
     )
@@ -260,17 +260,17 @@ def huggingface_tokenizer(tokenizer: HFTokenizer, document: Document) -> List[To
 
 
 def compute_token_span_score(
-    semantic_tokens: List[SemanticToken], tokens: List[Token]
+    syntax_tokens: List[SyntaxToken], tokens: List[Token]
 ) -> float:
     """Computes the token span score of a document."""
 
     token_span_score_sum = 0
 
     for token in tokens:
-        for semantic_token in semantic_tokens:
-            if tokens_overlap(token, semantic_token):
+        for syntax_token in syntax_tokens:
+            if tokens_overlap(token, syntax_token):
                 token_span_score_sum += 1
-            if token.range[1] < semantic_token.range[0]:
+            if token.range[1] < syntax_token.range[0]:
                 break
 
     token_span_score = 0
@@ -282,7 +282,7 @@ def compute_token_span_score(
 
 def compute_identifier_splitting_score(
     document: Document,
-    identifiers: List[SemanticToken],
+    identifiers: List[SyntaxToken],
     tokens: List[Token],
 ) -> Tuple[float, float, float, List[IdentifierSplits]]:
     """Computes the identifier splitting score of a document."""
@@ -376,7 +376,7 @@ def compute_identifier_splitting_score(
     return jaccard, raw_jaccard, identifier_fertility, identifier_splits
 
 
-def collect_identifiers(tree: TSTree, document: Document) -> List[SemanticToken]:
+def collect_identifiers(tree: TSTree, document: Document) -> List[SyntaxToken]:
     """Collects the identifiers of the AST and their byte ranges over the
     document's content."""
 
@@ -387,19 +387,17 @@ def collect_identifiers(tree: TSTree, document: Document) -> List[SemanticToken]
     matches = query.captures(tree.root_node)
 
     identifiers = [
-        SemanticToken(
-            range=(match[0].start_byte, match[0].end_byte), type=match[0].type
-        )
+        SyntaxToken(range=(match[0].start_byte, match[0].end_byte), type=match[0].type)
         for match in matches
     ]
 
     return identifiers
 
 
-def collect_semantic_tokens(tree: TSTree, content: bytes) -> List[SemanticToken]:
+def collect_syntax_tokens(tree: TSTree, content: bytes) -> List[SyntaxToken]:
     """Collects the leaf nodes of the AST and their byte ranges over the
     document's content."""
-    semantic_tokens = []
+    syntax_tokens = []
 
     prev_start_byte = 0
     prev_end_byte = 0
@@ -412,13 +410,11 @@ def collect_semantic_tokens(tree: TSTree, content: bytes) -> List[SemanticToken]
             token_range = (node.start_byte, node.end_byte)
 
             if prev_end_byte != node.start_byte:
-                semantic_tokens.append(
-                    SemanticToken(
-                        range=(prev_end_byte, node.start_byte), type="unknown"
-                    )
+                syntax_tokens.append(
+                    SyntaxToken(range=(prev_end_byte, node.start_byte), type="unknown")
                 )
 
-            semantic_tokens.append(SemanticToken(range=token_range, type=token_type))
+            syntax_tokens.append(SyntaxToken(range=token_range, type=token_type))
 
             prev_start_byte = node.start_byte
             prev_end_byte = node.end_byte
@@ -429,11 +425,11 @@ def collect_semantic_tokens(tree: TSTree, content: bytes) -> List[SemanticToken]
     collect_tokens(tree.root_node)
 
     if prev_end_byte < len(content):
-        semantic_tokens.append(
-            SemanticToken(range=(prev_end_byte, len(content)), type="unknown")
+        syntax_tokens.append(
+            SyntaxToken(range=(prev_end_byte, len(content)), type="unknown")
         )
 
-    return semantic_tokens
+    return syntax_tokens
 
 
 def compute_jaccard_similarity_score(set1: Set[str], set2: Set[str]) -> float:

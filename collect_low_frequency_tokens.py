@@ -41,25 +41,7 @@ r = {}
 for tokenizer_name, frequencies in data.items():
     r[tokenizer_name] = []
 
-    lowest_freq = []
-    highest_freq = []
-
-    for id, frequency in list(frequencies.items())[:100]:
-        token_str = None
-
-        if tokenizer_name in HF_TOKENIZERS:
-            token_str = HF_TOKENIZERS[tokenizer_name]._convert_id_to_token(int(id))
-
-        if tokenizer_name in OPENAI_TOKENIZERS:
-            token_str = (
-                OPENAI_TOKENIZERS[tokenizer_name]
-                .decode_single_token_bytes(int(id))
-                .decode("utf-8", errors="ignore")
-            )
-
-        lowest_freq.append((token_str, frequency))
-
-    for id, frequency in list(frequencies.items())[100:]:
+    for id, frequency in list(reversed(list(frequencies.items()))):
         token_str = None
 
         if tokenizer_name in HF_TOKENIZERS:
@@ -76,9 +58,7 @@ for tokenizer_name, frequencies in data.items():
                 logging.error(f"Failed to decode token {id} for {tokenizer_name}")
                 token_str = "UNK"
 
-        highest_freq.append((token_str, frequency))
-
-    r[tokenizer_name] = highest_freq + lowest_freq
+        r[tokenizer_name].append((token_str, frequency))
 
 
 with open("results/token-frequencies-top.json", "w") as file:
